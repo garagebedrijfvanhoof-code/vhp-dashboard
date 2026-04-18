@@ -335,13 +335,25 @@ const defaultState = {
 };
 
 function setSyncStatus(s,t){document.getElementById('sync-dot').className='sync-dot '+s;document.getElementById('sync-label').textContent=t;}
-async function saveCloud(){setSyncStatus('busy','opslaan...');try{await window.storage.set(STORAGE_KEY,JSON.stringify(state));setSyncStatus('ok','gesynchroniseerd');}catch(e){setSyncStatus('err','opslaan mislukt');}}
+async function saveCloud(){
+  setSyncStatus('busy','opslaan...');
+  try{
+    await fetch('/api/storage?key='+STORAGE_KEY, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({value: state})
+    });
+    setSyncStatus('ok','gesynchroniseerd');
+  }catch(e){setSyncStatus('err','opslaan mislukt');}
+}
 function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,900);}
 async function loadCloud(){
   setSyncStatus('busy','laden...');
   try{
-    const r=await window.storage.get(STORAGE_KEY);
-    if(r&&r.value){const p=JSON.parse(r.value);state=(p.cards&&p.cards.length>10)?p:JSON.parse(JSON.stringify(defaultState));}
+    const r=await fetch('/api/storage?key='+STORAGE_KEY);
+    const json=await r.json();
+    const p=json.value;
+    if(p&&p.cards&&p.cards.length>10){state=p;}
     else{state=JSON.parse(JSON.stringify(defaultState));}
     setSyncStatus('ok','gesynchroniseerd');
   }catch(e){state=JSON.parse(JSON.stringify(defaultState));setSyncStatus('err','laden mislukt — standaard geladen');}
