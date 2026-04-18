@@ -109,7 +109,15 @@ const phases = [
     ]},
 ];
 
-const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+let saved = {};
+(async () => {
+  try {
+    const r = await fetch('/api/storage?key=' + STORAGE_KEY);
+    const json = await r.json();
+    saved = json.value || {};
+  } catch(e) { saved = {}; }
+  renderAll();
+})();
 let allTasks = 0;
 
 function updateStats() {
@@ -127,6 +135,7 @@ function updateBar(pi) {
   if(bar) bar.style.width = Math.round(done/ph.tasks.length*100)+'%';
 }
 
+function renderAll() {
 const container = document.getElementById('phases');
 phases.forEach((ph, pi) => {
   allTasks += ph.tasks.length;
@@ -154,7 +163,11 @@ phases.forEach((ph, pi) => {
     row.querySelector('.task-check').addEventListener('click', function() {
       const k = this.dataset.key;
       saved[k] = !saved[k];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      fetch('/api/storage?key=' + STORAGE_KEY, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({value: saved})
+    });
       this.classList.toggle('done', saved[k]);
       this.nextElementSibling.classList.toggle('done', saved[k]);
       updateStats();
@@ -172,6 +185,7 @@ phases.forEach((ph, pi) => {
   setTimeout(()=>updateBar(pi), 50);
 });
 updateStats();
+} // einde renderAll
 </script>
 </body>
 </html>
