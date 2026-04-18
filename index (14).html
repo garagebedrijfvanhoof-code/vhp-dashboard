@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VHP Autoparts — Grossier Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0f0f0f;color:#e8e8e2;font-family:'IBM Plex Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
+.logo{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#555;letter-spacing:.1em;margin-bottom:.5rem;}
+h1{font-family:'IBM Plex Mono',monospace;font-size:22px;color:#c8f04a;margin-bottom:.4rem;}
+.sub{font-size:13px;color:#888;margin-bottom:3rem;font-family:'IBM Plex Mono',monospace;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;width:100%;max-width:860px;}
+.card{background:#1a1a1a;border:1px solid #2e2e2e;border-radius:10px;padding:1.75rem;text-decoration:none;color:#e8e8e2;transition:all .2s;display:flex;flex-direction:column;gap:.75rem;}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.card.w{border-top:3px solid #8fd4f8;}
+.card.k{border-top:3px solid #f0a842;}
+.card.c{border-top:3px solid #22d3ee;}
+.icon{font-size:26px;}
+.title{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;}
+.card.w .title{color:#8fd4f8;}
+.card.k .title{color:#f0a842;}
+.card.c .title{color:#22d3ee;}
+.desc{font-size:12px;color:#888;line-height:1.6;}
+.arrow{font-size:16px;color:#333;align-self:flex-end;margin-top:.5rem;transition:color .15s;}
+.card:hover .arrow{color:#c8f04a;}
+footer{margin-top:3rem;font-size:11px;font-family:'IBM Plex Mono',monospace;color:#333;}
+</style>
+</head>
+<body>
+  <div class="logo">// VHP AUTOPARTS — SPIJKENISSE</div>
+  <h1>Grossier Dashboard</h1>
+  <p class="sub">Interne tools voor de opbouw van de B2B grossier</p>
+  <div class="grid">
+    <a href="waterval.html" class="card w">
+      <div class="icon">🗂</div>
+      <div class="title">Leveranciers & Grossiers</div>
+      <div class="desc">Overzicht van alle leveranciers, formules en concurrenten per laag. Zoek op naam of merk.</div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="kaart.html" class="card k">
+      <div class="icon">🗺</div>
+      <div class="title">Grossiers Kaart NL</div>
+      <div class="desc">Interactieve kaart van alle grossiers en formules in Nederland. Filter per formule en straalcirkel.</div>
+      <div class="arrow">→</div>
+    </a>
+    <a href="checklist.html" class="card c">
+      <div class="icon">✅</div>
+      <div class="title">Opbouw Checklist</div>
+      <div class="desc">Stap-voor-stap checklist voor het opbouwen van de grossier — van bedrijfsopzet tot lancering.</div>
+      <div class="arrow">→</div>
+    </a>
+  </div>
+  <footer>// intern gebruik — VHP Autoparts Spijkenisse</footer>
+</body>
+</html>

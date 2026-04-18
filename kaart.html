@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grossiers Kaart — VHP Autoparts</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+  :root {
+    --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2e2e2e; --border2:#3a3a3a;
+    --text:#e8e8e2; --text2:#888; --text3:#555;
+    --accent:#c8f04a; --danger:#f05a42;
+    --purple:#c084fc; --teal:#2dd4bf; --red:#f87171; --lime:#a3e635; --orange:#fb923c;
+    --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); font-family: var(--font); color: var(--text); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: .6rem 1rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
+  .topbar h1 { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; white-space: nowrap; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .pill { display: flex; align-items: center; gap: 5px; font-size: 11px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; border: 1.5px solid transparent; cursor: pointer; user-select: none; transition: all .15s; white-space: nowrap; }
+  .pill.active { opacity: 1; }
+  .pill.inactive { opacity: .28; }
+  .pill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .pill.vhp        { border-color:var(--accent);  color:var(--accent); }
+  .pill.allparts   { border-color:var(--purple);  color:var(--purple); }
+  .pill.precisium  { border-color:var(--teal);    color:var(--teal); }
+  .pill.partspoint { border-color:var(--red);     color:var(--red); }
+  .pill.vrooam     { border-color:var(--lime);    color:var(--lime); }
+  .pill.carx       { border-color:var(--orange);  color:var(--orange); }
+  .pill.kilinclar  { border-color:#22d3ee;         color:#22d3ee; }
+  .pill.autodist   { border-color:#fb7185;         color:#fb7185; }
+  .radius-wrap { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 11px; font-family: var(--mono); color: var(--text2); white-space: nowrap; flex-wrap: wrap; }
+  .radius-wrap input[type=range] { width: 90px; accent-color: var(--accent); }
+  .radius-val { min-width: 36px; color: var(--accent); font-family: var(--mono); font-size: 11px; }
+  .btn-sm { font-size: 11px; font-family: var(--mono); color: var(--text3); cursor: pointer; padding: 2px 8px; border: 1px solid var(--border2); border-radius: 4px; background: transparent; }
+  .btn-sm:hover { color: var(--danger); border-color: var(--danger); }
+  .btn-sm.unk-btn { color: #8fd4f8; border-color: #8fd4f844; }
+  .btn-sm.unk-btn:hover { border-color: #8fd4f8; }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  #map { flex: 1; }
+  .side { width: 0; background: var(--surface); border-left: 1px solid var(--border); overflow: hidden; transition: width .25s; display: flex; flex-direction: column; flex-shrink: 0; }
+  .side.open { width: 280px; }
+  .side-header { padding: .75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .side-header h2 { font-family: var(--mono); font-size: 12px; color: var(--orange); }
+  .side-close { font-size: 18px; color: var(--text3); cursor: pointer; }
+  .side-close:hover { color: var(--danger); }
+  .side-body { flex: 1; overflow-y: auto; padding: .5rem; }
+  .unk-group { margin-bottom: 1rem; }
+  .unk-group-title { font-size: 10px; font-family: var(--mono); padding: 3px 8px; border-radius: 3px; margin-bottom: 6px; display: inline-block; }
+  .unk-item { font-size: 12px; color: var(--text2); padding: 5px 8px; border-bottom: 1px solid var(--border); line-height: 1.4; }
+  .unk-item:last-child { border-bottom: none; }
+  .unk-item span { font-size: 10px; font-family: var(--mono); color: var(--text3); display: block; margin-top: 2px; }
+  .leaflet-popup-content-wrapper { background:#1a1a1a; border:1px solid #3a3a3a; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.6); }
+  .leaflet-popup-tip { background:#1a1a1a; }
+  .leaflet-popup-content { margin:10px 14px; font-family:'IBM Plex Sans',sans-serif; }
+  .pop-name { font-size:13px; font-weight:500; color:#e8e8e2; margin-bottom:4px; }
+  .pop-adres { font-size:11px; color:#888; font-family:'IBM Plex Mono',monospace; margin-bottom:5px; line-height:1.4; }
+  .pop-badge { font-size:10px; font-family:'IBM Plex Mono',monospace; padding:2px 7px; border-radius:3px; display:inline-block; margin-bottom:6px; }
+  .pop-note { font-size:11px; color:#666; font-family:'IBM Plex Mono',monospace; margin-bottom:6px; }
+  .pop-btn { font-size:11px; font-family:'IBM Plex Mono',monospace; background:#2a2a2a; border:1px solid #3a3a3a; color:#c8f04a; border-radius:4px; padding:3px 9px; cursor:pointer; display:block; width:100%; text-align:center; }
+  .pop-btn:hover { background:#333; }
+  .map-hint { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(26,26,26,.9); border:1px solid var(--border2); border-radius:8px; padding:7px 14px; font-size:11px; font-family:var(--mono); color:var(--text2); z-index:1000; pointer-events:none; display:none; white-space:nowrap; }
+  .map-hint b { color:var(--accent); }
+  .count-badge { font-size:10px; font-family:var(--mono); background:#2a2a2a; border:1px solid var(--border2); border-radius:10px; padding:1px 7px; color:var(--text2); margin-left:4px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>// GROSSIERS KAART NL</h1>
+  <div class="filters">
+    <div class="pill vhp active"        data-f="vhp"        onclick="toggleF(this)"><div class="pill-dot" style="background:var(--accent)"></div>VHP (jij)</div>
+    <div class="pill allparts active"   data-f="allparts"   onclick="toggleF(this)"><div class="pill-dot" style="background:var(--purple)"></div>AllParts</div>
+    <div class="pill precisium active"  data-f="precisium"  onclick="toggleF(this)"><div class="pill-dot" style="background:var(--teal)"></div>Precisium</div>
+    <div class="pill partspoint active" data-f="partspoint" onclick="toggleF(this)"><div class="pill-dot" style="background:var(--red)"></div>PartsPoint</div>
+    <div class="pill vrooam active"     data-f="vrooam"     onclick="toggleF(this)"><div class="pill-dot" style="background:var(--lime)"></div>Vrooam</div>
+    <div class="pill carx active"       data-f="carx"       onclick="toggleF(this)"><div class="pill-dot" style="background:var(--orange)"></div>CarX</div>
+    <div class="pill kilinclar active"  data-f="kilinclar"  onclick="toggleF(this)"><div class="pill-dot" style="background:#22d3ee"></div>Kilinclar</div>
+    <div class="pill autodist active"   data-f="autodist"   onclick="toggleF(this)"><div class="pill-dot" style="background:#fb7185"></div>Autodistribution</div>
+  </div>
+  <div class="radius-wrap">
+    straal:
+    <input type="range" id="r-slider" min="0" max="50" value="0" step="1" oninput="onRadiusSlide(this.value)"/>
+    <span class="radius-val" id="r-val">uit</span>
+    <button class="btn-sm" onclick="clearCircle()">✕ cirkel</button>
+    <button class="btn-sm unk-btn" onclick="toggleSide()">? onbekend <span class="count-badge" id="unk-count">0</span></button>
+  </div>
+</div>
+<div class="main">
+  <div id="map"></div>
+  <div class="side" id="side">
+    <div class="side-header">
+      <h2>Adres onbekend — nog in te vullen</h2>
+      <span class="side-close" onclick="toggleSide()">×</span>
+    </div>
+    <div class="side-body" id="side-body"></div>
+  </div>
+</div>
+<div class="map-hint" id="map-hint">Straal actief — klik op een <b>marker</b> of ergens op de kaart</div>
+
+<script>
+const cfg = {
+  vhp:        {color:'#c8f04a', label:'VHP (jij)'},
+  allparts:   {color:'#c084fc', label:'AllParts'},
+  precisium:  {color:'#2dd4bf', label:'Precisium'},
+  partspoint: {color:'#f87171', label:'PartsPoint'},
+  vrooam:     {color:'#a3e635', label:'Vrooam'},
+  carx:       {color:'#fb923c', label:'CarX Benelux'},
+  kilinclar:  {color:'#22d3ee', label:'Kilinclar'},
+  autodist:   {color:'#fb7185', label:'Autodistribution'},
+};
+
+const known = [
+  // VHP
+  {name:'VHP Autoparts',adres:'Spijkenisse',note:'Jullie locatie',lat:51.849,lng:4.329,f:'vhp'},
+  // AllParts
+  {name:'AllParts Cruuswaert',adres:'Oberonweg 12-16, Spijkenisse',note:'ma-vr 08:00-17:30',lat:51.854,lng:4.334,f:'allparts'},
+  {name:'AllParts Haga',adres:'Noordenweg 79A, Ridderkerk',note:'ma-vr 08:00-17:30',lat:51.867,lng:4.604,f:'allparts'},
+  {name:'AllParts Jatech Capelle',adres:'Kanaalweg 4, Capelle a/d IJssel',note:'ma-vr 08:00-17:00',lat:51.921,lng:4.581,f:'allparts'},
+  {name:'AllParts Jatech Krimpen',adres:'Van der Giessenweg 13, Krimpen a/d IJssel',note:'ma-vr 08:00-17:00',lat:51.919,lng:4.611,f:'allparts'},
+  {name:"AllParts d'Uston en Allard",adres:'Laan van Meerdervoort 44a, Den Haag',note:'di-vr 09:00-17:00',lat:52.079,lng:4.296,f:'allparts'},
+  {name:'AllParts Amstelparts',adres:'Surinameplein 38, Amsterdam',note:'ma-vr 09:00-18:00',lat:52.358,lng:4.863,f:'allparts'},
+  {name:'AllParts Merci Amsterdam Noord',adres:'Slijperweg 5, Amsterdam',note:'ma-za 09:00-18:00',lat:52.405,lng:4.913,f:'allparts'},
+  {name:'AllParts Merci Amsterdam Sloten',adres:'Langsomweg 3, Amsterdam',note:'ma-za 09:00-18:00',lat:52.359,lng:4.824,f:'allparts'},
+  {name:'AllParts Merci Zaandam',adres:'De Weer 30, Zaandam',note:'ma-za 09:00-18:00',lat:52.454,lng:4.823,f:'allparts'},
+  {name:'AllParts Revon',adres:'Einsteinstraat 6, Hillegom',note:'ma-vr 08:00-17:30',lat:52.297,lng:4.580,f:'allparts'},
+  {name:'AllParts Boer Automaterialen',adres:'Hornweg 198, Aalsmeer',note:'ma-vr 08:00-17:00',lat:52.267,lng:4.760,f:'allparts'},
+  {name:'AllParts AMC Zeist',adres:'Aalscholverlaan 40, Zeist',note:'ma-do 08:30-17:30',lat:52.083,lng:5.238,f:'allparts'},
+  {name:'AllParts G. van de Munt',adres:'Laanstraat 80, Soest',note:'ma-vr 08:00-17:30',lat:52.179,lng:5.295,f:'allparts'},
+  {name:'AllParts Elmu',adres:'Pascalweg 14, Elst',note:'ma-vr 08:30-17:30',lat:51.917,lng:5.844,f:'allparts'},
+  {name:'AllParts Koren Culemborg',adres:'Erasmusweg 6, Culemborg',note:'ma-vr 08:00-17:30',lat:51.946,lng:5.236,f:'allparts'},
+  {name:'AllParts Koren Geldermalsen',adres:'Poppenbouwing 4, Geldermalsen',note:'ma-vr 08:00-17:30',lat:51.884,lng:5.297,f:'allparts'},
+  {name:'AllParts IGA Heteren',adres:'Poort van Midden Gelderland, Heteren',note:'ma-vr 08:15-17:30',lat:51.955,lng:5.774,f:'allparts'},
+  {name:'AllParts Autoplex Zevenaar',adres:'Nobelstraat 7, Zevenaar',note:'ma-vr 08:30-17:30',lat:51.922,lng:6.079,f:'allparts'},
+  {name:'AllParts Hampsink Apeldoorn',adres:'Koningslijn 30, Apeldoorn',note:'ma-vr 08:00-17:30',lat:52.211,lng:5.960,f:'allparts'},
+  {name:'AllParts Kruitbosch Deventer',adres:'Dortmundstraat 10, Deventer',note:'ma-vr 08:00-17:15',lat:52.254,lng:6.168,f:'allparts'},
+  {name:'AllParts Teunis Rijssen',adres:'Galvanistraat 3, Rijssen',note:'ma-vr 07:45-17:30',lat:52.306,lng:6.511,f:'allparts'},
+  {name:'AllParts Veltink Vroomshoop',adres:'De Sluis 2, Vroomshoop',note:'ma-vr 08:00-17:30',lat:52.466,lng:6.571,f:'allparts'},
+  {name:'AllParts Van Dijk',adres:'Struisvogelstraat 13, Groningen',note:'ma-vr 08:00-18:00',lat:53.213,lng:6.566,f:'allparts'},
+  {name:'AllParts Ype Kramer Leeuwarden',adres:'Zwettestraat 22, Leeuwarden',note:'ma-vr 08:00-18:00',lat:53.196,lng:5.797,f:'allparts'},
+  {name:'AllParts Ype Kramer Sneek',adres:'Wolkammerstraat 10, Sneek',note:'ma-vr 08:00-18:00',lat:53.033,lng:5.657,f:'allparts'},
+  {name:'AllParts Ype Kramer Drachten',adres:'De Roef 10, Drachten',note:'ma-vr 07:30-17:30',lat:53.107,lng:6.100,f:'allparts'},
+  {name:'AllParts Jari Assen',adres:'Hof van Parijs 10d, Assen',note:'ma-vr 08:00-17:30',lat:52.993,lng:6.571,f:'allparts'},
+  {name:'AllParts Jari Hoogeveen',adres:'Smirnoffstraat 9a, Hoogeveen',note:'ma-vr 08:00-17:30',lat:52.713,lng:6.478,f:'allparts'},
+  {name:'AllParts Jari Emmen',adres:'Phileas Foggstraat 1, Emmen',note:'ma-vr 08:00-17:30',lat:52.787,lng:6.891,f:'allparts'},
+  {name:'AllParts Jari Coevorden',adres:'Monierweg 4a, Coevorden',note:'ma-vr 08:00-17:30',lat:52.663,lng:6.740,f:'allparts'},
+  {name:'AllParts AES Emmeloord',adres:'Havenstraat 18, Emmeloord',note:'ma-vr 08:00-17:30',lat:52.714,lng:5.749,f:'allparts'},
+  {name:'AllParts AES Lemmer',adres:'Ossekamp 1, Lemmer',note:'ma-vr 08:00-17:30',lat:52.845,lng:5.710,f:'allparts'},
+  {name:'AEP Eindhoven',adres:'Hastelweg 272, Eindhoven',note:'ma-vr 08:30-17:15',lat:51.430,lng:5.451,f:'allparts'},
+  {name:'AllParts De Turck Eindhoven',adres:'Hastelweg 135, Eindhoven',note:'ma-vr 08:00-18:00',lat:51.432,lng:5.449,f:'allparts'},
+  {name:'AllParts Evo',adres:'Ambachtstraat 9A, Wijk en Aalburg',note:'ma-vr 08:30-17:00',lat:51.771,lng:5.121,f:'allparts'},
+  {name:'AllParts Kuyntjes',adres:'Achterdijk 11, Nieuwland',note:'ma-do 08:00-20:30',lat:51.830,lng:5.079,f:'allparts'},
+  {name:'AllParts Koster Axel',adres:'Kinderdijk 35, Axel',note:'ma-vr 08:30-17:00',lat:51.265,lng:3.920,f:'allparts'},
+  {name:'AllParts Besbo Rijen',adres:'Provinciënbaan 3, Rijen',note:'ma-vr 08:30-17:30',lat:51.588,lng:4.915,f:'allparts'},
+  {name:'AllParts Besbo Tilburg',adres:'J.F. Vlekkeweg 10, Tilburg',note:'ma-vr 08:30-17:30',lat:51.548,lng:5.065,f:'allparts'},
+  {name:'AllParts Huva Bladel',adres:'Industrieweg 8a, Bladel',note:'ma-vr 08:30-17:30',lat:51.365,lng:5.223,f:'allparts'},
+  {name:'AllParts Huva Eersel',adres:'Meerheide 2, Eersel',note:'ma-vr 08:30-17:30',lat:51.360,lng:5.316,f:'allparts'},
+  {name:'AllParts AdCar Berghem',adres:'Osseweg 43A, Berghem',note:'ma-vr 08:00-18:00',lat:51.749,lng:5.566,f:'allparts'},
+  {name:'AllParts Agron Heerlen',adres:'In de Cramer 31, Heerlen',note:'ma-vr 08:00-17:00',lat:50.882,lng:5.983,f:'allparts'},
+  {name:'AllParts Agron Geleen',adres:'Aan de Heijgraef 4, Geleen',note:'ma-vr 08:00-17:30',lat:50.974,lng:5.836,f:'allparts'},
+  {name:'AllParts Bachaus Brunssum',adres:'Watermolen 10, Brunssum',note:'ma-vr 08:30-17:30',lat:50.946,lng:5.993,f:'allparts'},
+  // Precisium
+  {name:'AGO Techniek Oude Tonge',adres:'Oude Tonge, Goeree-Overflakkee',note:'Precisium-lid',lat:51.674,lng:4.190,f:'precisium'},
+  {name:'Aparts Auto & Industrie',adres:'Rotterdam',note:'Precisium-lid',lat:51.924,lng:4.464,f:'precisium'},
+  {name:'Auto Waard Heerhugowaard',adres:'Heerhugowaard',note:'Precisium-lid',lat:52.660,lng:4.836,f:'precisium'},
+  {name:'Auto Waard Schagen',adres:'Schagen',note:'Precisium-lid',lat:52.788,lng:4.799,f:'precisium'},
+  {name:'Autotechnica Amsterdam',adres:'Amsterdam',note:'Precisium-lid',lat:52.374,lng:4.895,f:'precisium'},
+  {name:'Birze',adres:'Apeldoorn',note:'Precisium-lid',lat:52.211,lng:5.970,f:'precisium'},
+  {name:'Bunschoten Automaterialen',adres:'Bunschoten',note:'Precisium-lid',lat:52.249,lng:5.378,f:'precisium'},
+  {name:'Deldense Automaterialen',adres:'Delden',note:'Precisium-lid',lat:52.259,lng:6.726,f:'precisium'},
+  {name:'G.E.A. Automaterialen',adres:'Emmen',note:'Precisium-lid',lat:52.789,lng:6.895,f:'precisium'},
+  {name:'Fugo Gouda',adres:'Gouda',note:'Precisium-lid',lat:52.014,lng:4.706,f:'precisium'},
+  {name:'Fugo Maarssen',adres:'Maarssen',note:'Precisium-lid',lat:52.134,lng:5.041,f:'precisium'},
+  {name:'Govers Automaterialen',adres:'Tholen',note:'Precisium-lid',lat:51.535,lng:4.222,f:'precisium'},
+  {name:'Jabo-Jagersma Oosterwolde',adres:'Oosterwolde',note:'Precisium-lid',lat:52.992,lng:6.293,f:'precisium'},
+  {name:'Jabo-Jagersma Drachten',adres:'Drachten',note:'Precisium-lid',lat:53.108,lng:6.099,f:'precisium'},
+  {name:'Kole Automotive',adres:'Raalte',note:'Precisium-lid',lat:52.384,lng:6.278,f:'precisium'},
+  {name:'Louis Verheggen',adres:'Eindhoven',note:'Precisium-lid',lat:51.442,lng:5.478,f:'precisium'},
+  {name:'Moorman Automaterialen',adres:'Leek',note:'Precisium-lid',lat:53.161,lng:6.390,f:'precisium'},
+  {name:'Novatech A.I.P. Heerenveen',adres:'Heerenveen',note:'Precisium-lid',lat:52.960,lng:5.918,f:'precisium'},
+  {name:'Novatech A.I.P. Steenwijk',adres:'Steenwijk',note:'Precisium-lid',lat:52.787,lng:6.119,f:'precisium'},
+  {name:'Novatech A.I.P. Staphorst',adres:'Staphorst',note:'Precisium-lid',lat:52.638,lng:6.200,f:'precisium'},
+  {name:'UD Autoparts',adres:'Amersfoort',note:'Precisium + CarX Benelux',lat:52.152,lng:5.387,f:'precisium'},
+  {name:'Wiveco',adres:'Oud Beijerland',note:'Precisium-lid • regio Spijkenisse',lat:51.832,lng:4.418,f:'precisium'},
+  {name:'XtraParts',adres:'Dordrecht',note:'Precisium + CarX Benelux',lat:51.817,lng:4.669,f:'precisium'},
+  // CarX
+  {name:'UD Autoparts (CarX)',adres:'Amersfoort',note:'Zeker CarX-lid',lat:52.154,lng:5.390,f:'carx'},
+  {name:'XtraParts (CarX)',adres:'Dordrecht',note:'Zeker CarX-lid',lat:51.819,lng:4.671,f:'carx'},
+  // Vrooam — Koskamp exact
+  {name:'Koskamp — Assen',adres:'Wenkebachstraat 3, Assen',note:'Hoofdvestiging',lat:52.994,lng:6.559,f:'vrooam'},
+  {name:'Koskamp — Den Ham HQ',adres:'Vriezendijk 10, Den Ham',note:'Hoofdkantoor Vrooam/Koskamp',lat:52.457,lng:6.508,f:'vrooam'},
+  {name:'Koskamp — Den Ham 2',adres:'Vriezendijk 12, Den Ham',note:'',lat:52.458,lng:6.509,f:'vrooam'},
+  {name:'Koskamp — Emmen',adres:'Huygensstraat 48, Emmen',note:'',lat:52.781,lng:6.895,f:'vrooam'},
+  {name:'Koskamp — Groningen',adres:'Koldingweg 28, Groningen',note:'Opleidingslocatie',lat:53.228,lng:6.587,f:'vrooam'},
+  {name:'Koskamp — Hengelo/Borne',adres:'Morseltoven 18, Borne',note:'Opleidingslocatie',lat:52.299,lng:6.752,f:'vrooam'},
+  {name:'Koskamp — Kampen',adres:'Stoomstraat 6, Kampen',note:'',lat:52.558,lng:5.909,f:'vrooam'},
+  {name:'Koskamp — Leeuwarden',adres:'Simon Vestdijkwei 4, Leeuwarden',note:'Opleidingslocatie',lat:53.198,lng:5.820,f:'vrooam'},
+  {name:'Koskamp — Lelystad',adres:'Artemisweg 200, Lelystad',note:'',lat:52.518,lng:5.488,f:'vrooam'},
+  {name:'Koskamp — Nijmegen',adres:'Bijsterhuizen 11, Nijmegen',note:'',lat:51.833,lng:5.830,f:'vrooam'},
+  {name:'Koskamp — Soest',adres:'Belvedèreweg 8, Soest',note:'Opleidingslocatie',lat:52.176,lng:5.294,f:'vrooam'},
+  {name:'Koskamp — Steenwijk',adres:'Wissel 2-4, Steenwijk',note:'',lat:52.790,lng:6.117,f:'vrooam'},
+  {name:'Koskamp — Zutphen',adres:'Litauensestraat 2, Zutphen',note:'',lat:52.139,lng:6.195,f:'vrooam'},
+  {name:'Koskamp — Arnhem',adres:'Driepoortenweg 15, Arnhem',note:'Opleidingslocatie',lat:51.982,lng:5.920,f:'vrooam'},
+  // Kilinclar — zelfstandige grossiersgroep Rotterdam e.o.
+  {name:'Kilinclar Rotterdam-Zuid',      adres:'Pretorialaan 50, Rotterdam',          note:'Eerste vestiging Kilinclar',      lat:51.895, lng:4.498, f:'kilinclar'},
+  {name:'Kilinclar Waalhaven',           adres:'Sluisjesdijk 86, Rotterdam',          note:'Waalhaven-vestiging',             lat:51.887, lng:4.432, f:'kilinclar'},
+  {name:'Kilinclar Nieuwe Binnenweg',    adres:'Nieuwe Binnenweg 421, Rotterdam',     note:'Delfshaven regio',                lat:51.916, lng:4.455, f:'kilinclar'},
+  {name:'Kilinclar Sevillaweg',          adres:'Sevillaweg 75, Rotterdam',            note:'Spaanse Polder',                  lat:51.928, lng:4.440, f:'kilinclar'},
+  {name:'Kilinclar George Stephensonweg',adres:'George Stephensonweg, Rotterdam',     note:'Spaanse Polder regio',            lat:51.930, lng:4.438, f:'kilinclar'},
+  {name:'Kilinclar Jonker Fransstraat',  adres:'Jonker Fransstraat 8, Rotterdam',     note:'Rotterdam Noord/Crooswijk',       lat:51.927, lng:4.497, f:'kilinclar'},
+  {name:'Kilinclar Barendrecht',         adres:'Zwaalweg 13, Barendrecht',            note:'Kilinclar Barendrecht',           lat:51.855, lng:4.536, f:'kilinclar'},
+  {name:'Kilinclar Ridderkerk',          adres:'Ridderkerk',                          note:'Adres nog te verifiëren',         lat:51.862, lng:4.602, f:'kilinclar'},
+  {name:'Kilinclar Schiedam',            adres:'Schiedam',                            note:'Adres nog te verifiëren',         lat:51.920, lng:4.399, f:'kilinclar'},
+  {name:'Kilinclar Vlaardingen',         adres:'Vlaardingen',                         note:'Adres nog te verifiëren',         lat:51.912, lng:4.340, f:'kilinclar'},
+  {name:'Kilinclar Hoogvliet',           adres:'Hoogvliet',                           note:'Adres nog te verifiëren',         lat:51.857, lng:4.374, f:'kilinclar'},
+  {name:'Kilinclar Zoetermeer',          adres:'Zoetermeer',                          note:'Centraal magazijn hier',          lat:52.057, lng:4.494, f:'kilinclar'},
+  {name:'Kilinclar Breda',               adres:'Breda',                               note:'Adres nog te verifiëren',         lat:51.589, lng:4.776, f:'kilinclar'},
+  {name:'Kilinclar Dordrecht',           adres:'Dordrecht',                           note:'Adres nog te verifiëren',         lat:51.817, lng:4.669, f:'kilinclar'},
+  {name:'Kilinclar Almere',              adres:'Almere',                              note:'Overgenomen van Carparts Almere', lat:52.374, lng:5.219, f:'kilinclar'},
+  {name:'Kilinclar Deventer',            adres:'Deventer',                            note:'Adres nog te verifiëren',         lat:52.254, lng:6.168, f:'kilinclar'},
+  {name:'Kilinclar Tilburg',             adres:'Tilburg',                             note:'Adres nog te verifiëren',         lat:51.567, lng:5.073, f:'kilinclar'},
+  // Autodistribution — formule van Doyen (Autodis Group)
+  {name:'Wijmar',                         adres:'De Dolfijn 14, Enkhuizen',             note:'Autodistribution-lid • ma-vr 08:15-17:30',  lat:52.706, lng:5.291, f:'autodist'},
+  {name:'Go-Autoparts',                   adres:'Keulenaar 6a, Wijk bij Duurstede',     note:'Autodistribution-lid • di/do tot 20:00',    lat:51.975, lng:5.350, f:'autodist'},
+  {name:'Automaterialen Tiel',            adres:'Faradaystraat 10, Tiel',               note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:51.889, lng:5.435, f:'autodist'},
+  {name:'AGJ Automotive Elburg',          adres:'Robbertsmatenstraat 21, Elburg',       note:'Autodistribution-lid • ma-vr 08:00-18:00',  lat:52.453, lng:5.835, f:'autodist'},
+  {name:'Automaterialen Heesch',          adres:'Bosschebaan 78, Heesch',               note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:51.737, lng:5.530, f:'autodist'},
+  {name:'AutoParts Zwolle',               adres:'Voltastraat 17H, Zwolle',              note:'Autodistribution-lid • ma-vr 08:00-17:00',  lat:52.508, lng:6.083, f:'autodist'},
+  {name:'Excluparts Nijmegen',            adres:'Binderskampweg 40, Nijmegen',          note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:51.842, lng:5.870, f:'autodist'},
+  {name:'Maromax Automaterialen Tilburg', adres:'Lovense Kanaaldijk 3a, Tilburg',       note:'Autodistribution-lid • ma-vr 08:00-17:00',  lat:51.553, lng:5.082, f:'autodist'},
+  {name:'Swieringa Sneek',                adres:'Lorentzstraat 11, Sneek',              note:'Autodistribution-lid • ma-vr 08:00-18:00',  lat:53.033, lng:5.660, f:'autodist'},
+  {name:'Swieringa Heerenveen',           adres:'Skrynmakker 8, Heerenveen',            note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:52.960, lng:5.918, f:'autodist'},
+  {name:'Swieringa Gorredijk',            adres:'De Kromten 16, Gorredijk',             note:'Autodistribution-lid • ma-vr 08:00-18:00',  lat:53.008, lng:6.059, f:'autodist'},
+  {name:'Growa Automaterialen Lochem',    adres:'Aalsvoort 3, Lochem',                  note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:52.160, lng:6.413, f:'autodist'},
+  {name:'Growa Automaterialen Lichtenvoorde', adres:'Newtonstraat 1, Lichtenvoorde',    note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:51.987, lng:6.561, f:'autodist'},
+  {name:'Holland Auto Parts Veldhoven',   adres:'Heuvel 58, Veldhoven',                 note:'Autodistribution-lid • ma-vr 08:30-18:00',  lat:51.416, lng:5.406, f:'autodist'},
+  {name:'Boensma Goor',                   adres:'Schoolstraat 110, Goor',               note:'Autodistribution-lid • ma-vr 08:30-18:00',  lat:52.228, lng:6.577, f:'autodist'},
+  {name:'Kneepkens Automaterialen Weert', adres:'Kessenichstraat 11-13, Weert',         note:'Autodistribution-lid • ma-vr 08:30-18:00',  lat:51.249, lng:5.708, f:'autodist'},
+  {name:'Van Essen Automotive Enschede',  adres:'Esstraat 18, Enschede',                note:'Autodistribution-lid • ma-vr 08:30-18:00',  lat:52.217, lng:6.892, f:'autodist'},
+  {name:'PJ Producten Nuth',              adres:'Thermiekstraat 5, Nuth',               note:'Autodistribution-lid • ma-vr 08:00-17:30',  lat:50.910, lng:5.882, f:'autodist'},
+  {name:'PartsPoint Barneveld',adres:'Marchandweg 23, Barneveld',note:'',lat:52.138,lng:5.581,f:'partspoint'},
+  {name:'PartsPoint Bemmel',adres:'De Houtakker 14, Bemmel',note:'',lat:51.891,lng:5.897,f:'partspoint'},
+  {name:'PartsPoint Ridderkerk',adres:"t Voorzand 12, Ridderkerk",note:'',lat:51.862,lng:4.592,f:'partspoint'},
+  {name:'PartsPoint Groenlo',adres:'Batterij 8a, Groenlo',note:'',lat:52.044,lng:6.621,f:'partspoint'},
+  {name:'PartsPoint Den Helder',adres:'Industrieweg 15A, Den Helder',note:'',lat:52.954,lng:4.762,f:'partspoint'},
+  {name:'PartsPoint Emmeloord',adres:'Bedrijfsweg 3, Emmeloord',note:'',lat:52.714,lng:5.752,f:'partspoint'},
+  {name:'PartsPoint Alphen aan den Rijn',adres:'Röntgenweg 17, Alphen aan den Rijn',note:'',lat:52.131,lng:4.660,f:'partspoint'},
+  {name:'PartsPoint Leiderdorp',adres:'Touwbaan 40, Leiderdorp',note:'',lat:52.158,lng:4.513,f:'partspoint'},
+  {name:'PartsPoint Zevenaar',adres:'James Wattstraat 18, Zevenaar',note:'',lat:51.921,lng:6.076,f:'partspoint'},
+  {name:'PartsPoint Dronten',adres:'De Amer 4-6, Dronten',note:'',lat:52.523,lng:5.718,f:'partspoint'},
+  {name:'PartsPoint Alkmaar',adres:'Robbenkoog 9-A, Alkmaar',note:'',lat:52.630,lng:4.740,f:'partspoint'},
+  {name:'PartsPoint Hilversum',adres:'Franciscusweg 10A, Hilversum',note:'',lat:52.223,lng:5.175,f:'partspoint'},
+  {name:'PartsPoint Amsterdam-Zuidoost',adres:'Daniel Goedkoopstraat 13, Amsterdam',note:'',lat:52.310,lng:4.952,f:'partspoint'},
+  {name:'PartsPoint Hellevoetsluis',adres:'Marconiweg 49-53, Hellevoetsluis',note:'',lat:51.833,lng:4.133,f:'partspoint'},
+  {name:'PartsPoint Schiedam',adres:'Fokkerstraat 501, Schiedam',note:'',lat:51.912,lng:4.388,f:'partspoint'},
+  {name:'PartsPoint Venray',adres:'Keizersveld 56, Venray',note:'',lat:51.527,lng:5.975,f:'partspoint'},
+  {name:'PartsPoint Eindhoven',adres:'Ekkersrijt 1221, Son en Breugel',note:'',lat:51.510,lng:5.499,f:'partspoint'},
+  {name:'PartsPoint Zutphen',adres:'De Stoven 8, Zutphen',note:'',lat:52.148,lng:6.196,f:'partspoint'},
+  {name:'PartsPoint Den Haag',adres:'1e van der Kunstraat 288, Den Haag',note:'',lat:52.048,lng:4.325,f:'partspoint'},
+  {name:'PartsPoint Utrecht',adres:'Nijverheidsweg 12, Utrecht',note:'',lat:52.075,lng:5.107,f:'partspoint'},
+  {name:'PartsPoint Amsterdam-Osdorp',adres:'Zuidermolenweg 17, Amsterdam',note:'',lat:52.362,lng:4.815,f:'partspoint'},
+  {name:'PartsPoint Purmerend',adres:'Bellstraat 6, Purmerend',note:'',lat:52.502,lng:4.956,f:'partspoint'},
+  {name:'PartsPoint Almere',adres:'Beemsterweg 23, Almere',note:'',lat:52.374,lng:5.219,f:'partspoint'},
+  {name:'PartsPoint Uden',adres:'Vluchtoord 33, Uden',note:'',lat:51.660,lng:5.617,f:'partspoint'},
+  {name:'PartsPoint Asten',adres:'Laagveld 21, Asten',note:'',lat:51.401,lng:5.750,f:'partspoint'},
+  {name:'PartsPoint Hoofddorp',adres:'Jacobus Spijkerdreef 26, Hoofddorp',note:'',lat:52.303,lng:4.687,f:'partspoint'},
+  {name:'PartsPoint Veendam',adres:'Lloydsweg 31B, Veendam',note:'',lat:53.109,lng:6.877,f:'partspoint'},
+  {name:'PartsPoint Harderwijk',adres:'Stephensonstraat 1, Harderwijk',note:'',lat:52.340,lng:5.619,f:'partspoint'},
+  {name:'PartsPoint Dedemsvaart',adres:'Kelvinstraat 11, Dedemsvaart',note:'',lat:52.601,lng:6.458,f:'partspoint'},
+  {name:'PartsPoint Terneuzen',adres:'Meester FJ Haarmanweg 21d, Terneuzen',note:'',lat:51.337,lng:3.831,f:'partspoint'},
+  {name:'PartsPoint Hengelo',adres:'Aquamarijnstraat 55, Hengelo',note:'',lat:52.269,lng:6.791,f:'partspoint'},
+  {name:'PartsPoint Doetinchem',adres:'Havenstraat 9-02, Doetinchem',note:'',lat:51.966,lng:6.296,f:'partspoint'},
+  {name:'PartsPoint Den Bosch',adres:'Afrikalaan 5, Den Bosch',note:'',lat:51.698,lng:5.312,f:'partspoint'},
+  {name:'PartsPoint Heerenveen',adres:'Jousterweg 32, Heerenveen',note:'',lat:52.961,lng:5.921,f:'partspoint'},
+  {name:'PartsPoint Deventer',adres:'Essenstraat 8, Deventer',note:'',lat:52.248,lng:6.152,f:'partspoint'},
+  {name:'PartsPoint Heerhugowaard',adres:'Nijverheidsplein 2C, Heerhugowaard',note:'',lat:52.661,lng:4.843,f:'partspoint'},
+  {name:'PartsPoint Delft',adres:'Schieweg 51, Delft',note:'',lat:52.006,lng:4.376,f:'partspoint'},
+  {name:'PartsPoint Wolvega',adres:'Grindweg 142b, Wolvega',note:'',lat:52.877,lng:5.993,f:'partspoint'},
+  {name:'PartsPoint Haarlem',adres:'Oudeweg 28, Haarlem',note:'',lat:52.379,lng:4.637,f:'partspoint'},
+  {name:'PartsPoint Wormerveer',adres:'Soldaatweg 46, Wormerveer',note:'',lat:52.496,lng:4.777,f:'partspoint'},
+  {name:'PartsPoint Hoorn',adres:'De Oude Veilling 58, Hoorn',note:'',lat:52.644,lng:5.059,f:'partspoint'},
+  {name:'PartsPoint Amersfoort',adres:'Argonweg 8, Amersfoort',note:'',lat:52.168,lng:5.413,f:'partspoint'},
+  {name:'PartsPoint Almelo',adres:'Twentepoort West 9, Almelo',note:'',lat:52.363,lng:6.636,f:'partspoint'},
+  {name:'PartsPoint Goes',adres:'Marquesweg 1A, Goes',note:'',lat:51.508,lng:3.898,f:'partspoint'},
+  {name:'PartsPoint Delfzijl',adres:'Sikkel 13, Delfzijl',note:'',lat:53.333,lng:6.924,f:'partspoint'},
+  {name:'PartsPoint Hoogvliet',adres:'Koddeweg 30, Hoogvliet',note:'',lat:51.857,lng:4.374,f:'partspoint'},
+  {name:'PartsPoint Zwolle',adres:'Voltastraat 11A, Zwolle',note:'',lat:52.508,lng:6.108,f:'partspoint'},
+  {name:'PartsPoint Leeuwarden',adres:'Edisonstraat 20, Leeuwarden',note:'',lat:53.201,lng:5.800,f:'partspoint'},
+  {name:'PartsPoint Emmen',adres:'Kapitein Nemostraat 14, Emmen',note:'',lat:52.787,lng:6.897,f:'partspoint'},
+  {name:'PartsPoint Boxtel',adres:'Van Salmstraat 2, Boxtel',note:'',lat:51.590,lng:5.329,f:'partspoint'},
+  {name:'PartsPoint Aalsmeer',adres:'Hollandweg 1, Aalsmeer',note:'',lat:52.258,lng:4.763,f:'partspoint'},
+  {name:'PartsPoint Nieuwegein',adres:'Utrechthaven 12a, Nieuwegein',note:'',lat:52.028,lng:5.087,f:'partspoint'},
+  {name:'PartsPoint Stadskanaal',adres:'Glasblazer 6, Stadskanaal',note:'',lat:52.984,lng:6.945,f:'partspoint'},
+  {name:'PartsPoint Ede',adres:'Jennerstraat 9a, Ede',note:'Hoofdkantoor AAG Benelux',lat:52.043,lng:5.666,f:'partspoint'},
+  {name:'PartsPoint Apeldoorn',adres:'Europaweg 100, Apeldoorn',note:'',lat:52.209,lng:5.969,f:'partspoint'},
+  {name:'PartsPoint Nijkerk',adres:'Smitspol 1, Nijkerk',note:'',lat:52.219,lng:5.489,f:'partspoint'},
+  {name:'PartsPoint Oss',adres:'Parallelweg 20, Oss',note:'',lat:51.766,lng:5.519,f:'partspoint'},
+  {name:'PartsPoint Assen',adres:'Industrieweg 30, Assen',note:'',lat:52.991,lng:6.563,f:'partspoint'},
+  {name:'PartsPoint Coevorden',adres:'Modem 31, Coevorden',note:'',lat:52.661,lng:6.742,f:'partspoint'},
+  {name:'PartsPoint Dalfsen',adres:'De Vesting 22, Dalfsen',note:'',lat:52.505,lng:6.256,f:'partspoint'},
+  {name:'PartsPoint Drachten',adres:'De Hemmen 8, Drachten',note:'',lat:53.108,lng:6.099,f:'partspoint'},
+  {name:'PartsPoint Cuijk',adres:'Ewinkel 14-01, Cuijk',note:'',lat:51.730,lng:5.882,f:'partspoint'},
+  {name:'PartsPoint Roosendaal',adres:'Leemstraat 11, Roosendaal',note:'',lat:51.533,lng:4.463,f:'partspoint'},
+  {name:'PartsPoint Panningen',adres:'John F. Kennedylaan 10, Panningen',note:'',lat:51.328,lng:5.981,f:'partspoint'},
+  {name:'PartsPoint Gemert',adres:'Scheiweg 5, Gemert',note:'',lat:51.556,lng:5.691,f:'partspoint'},
+  {name:'PartsPoint Heerlen',adres:'Pretoriastraat 25A, Heerlen',note:'',lat:50.889,lng:5.980,f:'partspoint'},
+  {name:'PartsPoint Maastricht',adres:'Kotterweg 21, Maastricht',note:'',lat:50.851,lng:5.692,f:'partspoint'},
+  {name:'PartsPoint Roermond',adres:'Noordhoven 6, Roermond',note:'',lat:51.196,lng:5.988,f:'partspoint'},
+  {name:'PartsPoint Wijchen',adres:'Bijsterhuizen 5007, Wijchen',note:'',lat:51.810,lng:5.728,f:'partspoint'},
+  {name:'PartsPoint Weert',adres:'Edisonlaan 33, Weert',note:'',lat:51.249,lng:5.708,f:'partspoint'},
+  {name:'PartsPoint Venlo',adres:'Rudolf Dieselweg 42, Venlo',note:'',lat:51.371,lng:6.172,f:'partspoint'},
+  {name:'PartsPoint Eindhoven Zuid',adres:'De Run 8421, Veldhoven',note:'',lat:51.400,lng:5.437,f:'partspoint'},
+  {name:'PartsPoint Dongen',adres:'De Hak 16M, Dongen',note:'',lat:51.626,lng:4.940,f:'partspoint'},
+  {name:'PartsPoint Veen',adres:'Lage Uitakker 1, Veen',note:'',lat:51.733,lng:5.018,f:'partspoint'},
+  {name:'PartsPoint Tilburg',adres:'Ellen Pankhurststraat 3-02, Tilburg',note:'',lat:51.567,lng:5.073,f:'partspoint'},
+  {name:'PartsPoint Werkendam',adres:'Bolstrastraat 8A, Werkendam',note:'',lat:51.814,lng:4.896,f:'partspoint'},
+  {name:'PartsPoint Zaltbommel',adres:'Toepadweg 13, Zaltbommel',note:'',lat:51.815,lng:5.255,f:'partspoint'},
+  {name:'PartsPoint Andelst',adres:'Industrieweg 1-3, Andelst',note:'',lat:51.904,lng:5.668,f:'partspoint'},
+  {name:'PartsPoint Arnhem',adres:'Leemansweg 62, Arnhem',note:'',lat:51.984,lng:5.916,f:'partspoint'},
+  {name:'PartsPoint Groningen',adres:'Osloweg 123, Groningen',note:'',lat:53.228,lng:6.544,f:'partspoint'},
+  {name:'PartsPoint Breda-Oost',adres:'Minervum 7001E, Breda',note:'',lat:51.601,lng:4.807,f:'partspoint'},
+  {name:'PartsPoint Denekamp',adres:'Hanzeweg 40, Denekamp',note:'',lat:52.378,lng:7.000,f:'partspoint'},
+  {name:'PartsPoint Sneek',adres:'Professor Zernikestraat 17, Sneek',note:'',lat:53.033,lng:5.660,f:'partspoint'},
+  {name:'PartsPoint Dokkum',adres:"De Brêge 8, Dokkum",note:'',lat:53.325,lng:5.999,f:'partspoint'},
+  {name:'PartsPoint Meppel',adres:'Paradijsweg 6, Meppel',note:'',lat:52.696,lng:6.196,f:'partspoint'},
+  {name:'PartsPoint Rotterdam-Ommoord',adres:'Vlambloem 140, Rotterdam',note:'',lat:51.950,lng:4.534,f:'partspoint'},
+  {name:'PartsPoint Raamsdonksveer',adres:'Sterrekroos 9, Raamsdonksveer',note:'',lat:51.699,lng:4.881,f:'partspoint'},
+  {name:'PartsPoint Huizen',adres:'Ambachtsweg 4, Huizen',note:'',lat:52.296,lng:5.236,f:'partspoint'},
+  {name:'PartsPoint Bussum',adres:'Spiegeldwarsstraat 10-12, Bussum',note:'',lat:52.274,lng:5.163,f:'partspoint'},
+  {name:'PartsPoint Amsterdam Noord',adres:'Computerweg 55, Amsterdam',note:'',lat:52.402,lng:4.930,f:'partspoint'},
+];
+
+const unknown = [
+  {formule:'vrooam', name:'Auto Indus'},
+  {formule:'vrooam', name:'Bachaus Automotive'},
+  {formule:'vrooam', name:'Broekhuizen'},
+  {formule:'vrooam', name:'De Autovriend'},
+  {formule:'vrooam', name:'Van Breemen'},
+  {formule:'vrooam', name:'Tinnemans'},
+  {formule:'vrooam', name:'Keulen Automaterialen'},
+  {formule:'vrooam', name:'Eurami'},
+  {formule:'vrooam', name:'Grundeken'},
+  {formule:'vrooam', name:'Hofland'},
+  {formule:'vrooam', name:'Lantinga Automaterialen'},
+  {formule:'vrooam', name:'Pro Parts'},
+  {formule:'vrooam', name:'Record Auto Onderdelen'},
+  {formule:'vrooam', name:'Remto Automaterialen'},
+  {formule:'vrooam', name:'IDE Automotive'},
+  {formule:'vrooam', name:'Maes & Zn'},
+  {formule:'vrooam', name:'Phillibert Autoparts & Services'},
+  {formule:'vrooam', name:'TAS Auto-onderdelen'},
+  {formule:'kilinclar', name:'Kilinclar Ridderkerk — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Schiedam — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Vlaardingen — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Hoogvliet — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Breda — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Dordrecht — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Almere — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Deventer — exacte adres'},
+  {formule:'kilinclar', name:'Kilinclar Tilburg — exacte adres'},
+  {formule:'autodist',  name:'Autodistribution — overige leden nog te inventariseren'},
+];
+
+const map = L.map('map', {center:[52.3,5.2], zoom:7});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
+}).addTo(map);
+
+function makeIcon(color, big) {
+  const s = big?18:11, b = big?3:2;
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:${s}px;height:${s}px;border-radius:50%;background:${color};border:${b}px solid rgba(255,255,255,.75);box-shadow:0 0 6px ${color}88;"></div>`,
+    iconSize:[s,s], iconAnchor:[s/2,s/2], popupAnchor:[0,-(s/2+4)]
+  });
+}
+
+let activeF = new Set(Object.keys(cfg));
+let markers = [];
+let circleLayer=null, circleCenter=null, radiusKm=0;
+
+known.forEach(g => {
+  const c = cfg[g.f];
+  const isVHP = g.f==='vhp';
+  const m = L.marker([g.lat,g.lng], {icon:makeIcon(c.color,isVHP)});
+  const bs = `background:${c.color}22;color:${c.color};border:1px solid ${c.color}55;`;
+  m.bindPopup(`
+    <div class="pop-name">${g.name}</div>
+    <div class="pop-adres">${g.adres}</div>
+    <span class="pop-badge" style="${bs}">${c.label}</span>
+    ${g.note?`<div class="pop-note">${g.note}</div>`:''}
+    ${!isVHP?`<button class="pop-btn" onclick="setCenter(${g.lat},${g.lng})">↔ toon straal rondom dit punt</button>`:''}
+  `, {maxWidth:260});
+  m.addTo(map);
+  markers.push({m, f:g.f, lat:g.lat, lng:g.lng, color:c.color, isVHP});
+});
+
+function toggleF(pill) {
+  const f = pill.dataset.f;
+  if(activeF.has(f)){activeF.delete(f);pill.classList.replace('active','inactive');}
+  else{activeF.add(f);pill.classList.replace('inactive','active');}
+  markers.forEach(({m,f:mf})=>activeF.has(mf)?m.addTo(map):map.removeLayer(m));
+  if(circleCenter&&radiusKm>0) highlightInRadius();
+}
+
+function onRadiusSlide(v) {
+  radiusKm=+v;
+  document.getElementById('r-val').textContent=radiusKm===0?'uit':radiusKm+' km';
+  if(radiusKm===0){clearCircle();return;}
+  document.getElementById('map-hint').style.display=circleCenter?'none':'block';
+  if(circleCenter) drawCircle();
+}
+
+function setCenter(lat,lng){
+  map.closePopup();
+  circleCenter={lat,lng};
+  document.getElementById('map-hint').style.display='none';
+  if(radiusKm>0) drawCircle();
+  else document.getElementById('map-hint').style.display='block';
+}
+
+function drawCircle(){
+  if(circleLayer) map.removeLayer(circleLayer);
+  circleLayer=L.circle([circleCenter.lat,circleCenter.lng],{
+    radius:radiusKm*1000, color:'#c8f04a', weight:2, opacity:.8,
+    fillColor:'#c8f04a', fillOpacity:.05
+  }).addTo(map);
+  highlightInRadius();
+}
+
+function highlightInRadius(){
+  markers.forEach(({m,lat,lng,color,isVHP,f})=>{
+    if(!activeF.has(f)) return;
+    const dist=map.distance([circleCenter.lat,circleCenter.lng],[lat,lng]);
+    const inR=dist<=radiusKm*1000;
+    m.setIcon(makeIcon(color,inR||isVHP));
+    m.setZIndexOffset(inR?1000:0);
+  });
+}
+
+function clearCircle(){
+  if(circleLayer){map.removeLayer(circleLayer);circleLayer=null;}
+  circleCenter=null;
+  document.getElementById('r-slider').value=0;
+  document.getElementById('r-val').textContent='uit';
+  document.getElementById('map-hint').style.display='none';
+  radiusKm=0;
+  markers.forEach(({m,color,isVHP})=>{m.setIcon(makeIcon(color,isVHP));m.setZIndexOffset(0);});
+}
+
+map.on('click',e=>{
+  if(radiusKm>0){circleCenter={lat:e.latlng.lat,lng:e.latlng.lng};drawCircle();document.getElementById('map-hint').style.display='none';}
+});
+
+// Zijpaneel onbekenden
+document.getElementById('unk-count').textContent=unknown.length;
+const byF={};
+unknown.forEach(u=>{(byF[u.formule]=byF[u.formule]||[]).push(u.name);});
+const body=document.getElementById('side-body');
+Object.entries(byF).forEach(([f,names])=>{
+  const c=cfg[f]||{color:'#888',label:f};
+  const grp=document.createElement('div');
+  grp.className='unk-group';
+  grp.innerHTML=`<div class="unk-group-title" style="background:${c.color}22;color:${c.color};border:1px solid ${c.color}44">${c.label} — adres onbekend</div>`;
+  names.forEach(n=>{
+    const item=document.createElement('div');
+    item.className='unk-item';
+    item.innerHTML=`${n}<span>adres nog op te zoeken</span>`;
+    grp.appendChild(item);
+  });
+  body.appendChild(grp);
+});
+
+function toggleSide(){document.getElementById('side').classList.toggle('open');}
+</script>
+</body>
+</html>

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leveranciers & Grossiers — VHP Autoparts</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --surface3:#2a2a2a;
+  --border:#2e2e2e; --border2:#3a3a3a;
+  --text:#e8e8e2; --text2:#888; --text3:#555;
+  --accent:#c8f04a; --accent2:#8fd4f8; --accent3:#f0a842; --danger:#f05a42;
+  --c1:#c084fc; --c2:#8fd4f8; --c3:#f0a842; --c4:#f87171; --c5:#a3e635; --c6:#22d3ee;
+  --radius:6px; --font:'IBM Plex Sans',sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh;}
+
+header{border-bottom:1px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+header h1{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);letter-spacing:.05em;}
+.sync{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);font-family:var(--mono);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.sync-dot.ok{background:var(--accent);}
+.sync-dot.busy{background:var(--accent3);animation:blink 1s infinite;}
+.sync-dot.err{background:var(--danger);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.toolbar{padding:.6rem 1.5rem;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:5px 12px;font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{border-color:var(--accent);color:var(--accent);}
+.btn.primary{background:var(--accent);color:#0f0f0f;border-color:var(--accent);font-weight:500;}
+.btn.primary:hover{background:#d8ff5a;}
+.btn.danger{border-color:transparent;color:var(--text3);}
+.btn.danger:hover{border-color:var(--danger);color:var(--danger);}
+
+.search-wrap{display:flex;gap:8px;align-items:center;flex:1;min-width:300px;}
+.search-wrap input{flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:6px 12px;font-size:12px;font-family:var(--mono);outline:none;}
+.search-wrap input:focus{border-color:var(--accent2);}
+.search-wrap input::placeholder{color:var(--text3);}
+.search-mode{display:flex;gap:4px;}
+.mode-btn{font-size:11px;font-family:var(--mono);padding:3px 8px;border-radius:4px;border:1px solid var(--border2);cursor:pointer;color:var(--text3);background:transparent;white-space:nowrap;}
+.mode-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(200,240,74,.08);}
+
+.legend{padding:.5rem 1.5rem;border-bottom:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);font-family:var(--mono);}
+.leg-dot{width:10px;height:10px;border-radius:2px;}
+
+.canvas{padding:1.5rem;display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap;}
+
+/* kolom per laag */
+.col{background:var(--surface);border:1px solid var(--border);border-radius:8px;width:260px;flex-shrink:0;transition:opacity .2s;}
+.col.dimmed{opacity:.2;}
+.col.l1{border-top:3px solid var(--c1);}
+.col.l2{border-top:3px solid var(--c2);}
+.col.l3{border-top:3px solid var(--c3);}
+.col.l4{border-top:3px solid var(--c4);}
+.col.l5{border-top:3px solid var(--c5);}
+.col.l6{border-top:3px solid var(--c6);}
+
+.col-header{padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.col-layer{font-size:9px;font-family:var(--mono);padding:2px 6px;border-radius:3px;flex-shrink:0;font-weight:500;}
+.col-title{font-size:12px;font-weight:500;font-family:var(--mono);color:var(--text);flex:1;cursor:text;min-width:0;}
+.col-title:focus{outline:1px solid var(--accent2);border-radius:3px;}
+.col-count{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;}
+.col-del{font-size:16px;color:var(--text3);cursor:pointer;line-height:1;padding:0 2px;}
+.col-del:hover{color:var(--danger);}
+.col-note{padding:5px 12px;font-size:11px;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);line-height:1.5;}
+
+.drop-zone{min-height:48px;padding:6px;}
+.drop-zone.drag-over{background:rgba(200,240,74,.06);border-radius:4px;}
+
+.card{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 10px;margin-bottom:5px;cursor:grab;user-select:none;position:relative;transition:border-color .15s,opacity .2s;}
+.card:active{cursor:grabbing;}
+.card.dragging{opacity:.35;}
+.card.hidden{display:none;}
+.card.highlight{border-color:var(--accent);background:rgba(200,240,74,.06);}
+.card-name{font-size:13px;color:var(--text);padding-right:44px;line-height:1.4;}
+.card-note{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:3px;line-height:1.4;}
+.card-merken{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;}
+.merk-tag{font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:10px;background:rgba(143,212,248,.1);color:var(--accent2);cursor:pointer;transition:background .1s;}
+.merk-tag:hover{background:rgba(143,212,248,.25);}
+.merk-tag.match{background:rgba(200,240,74,.2);color:var(--accent);}
+.card-type-badge{font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:3px;margin-top:5px;display:inline-block;}
+
+.card-actions{position:absolute;top:6px;right:6px;display:none;gap:4px;}
+.card:hover .card-actions{display:flex;}
+.card-btn{background:var(--surface3);border:1px solid var(--border2);border-radius:3px;color:var(--text2);cursor:pointer;font-size:11px;padding:1px 5px;font-family:var(--mono);}
+.card-btn:hover{color:var(--text);border-color:var(--accent2);}
+.card-btn.del:hover{color:var(--danger);border-color:var(--danger);}
+
+.add-col-btn{width:260px;background:transparent;border:1px dashed var(--border2);border-radius:8px;padding:14px;text-align:center;font-size:12px;font-family:var(--mono);color:var(--text3);cursor:pointer;transition:all .15s;flex-shrink:0;align-self:flex-start;margin-top:22px;}
+.add-col-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.search-result-bar{background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.3);border-radius:6px;padding:6px 12px;margin:.5rem 1.5rem;font-size:12px;font-family:var(--mono);color:var(--accent);display:none;}
+
+/* modals */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:1.5rem;width:420px;max-width:95vw;max-height:90vh;overflow-y:auto;}
+.modal h2{font-size:14px;font-family:var(--mono);color:var(--accent);margin-bottom:1rem;}
+.modal label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px;font-family:var(--mono);}
+.modal input,.modal select,.modal textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius);padding:8px 10px;font-size:13px;font-family:var(--font);outline:none;margin-bottom:1rem;}
+.modal textarea{resize:vertical;min-height:60px;}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--accent2);}
+.modal select option{background:var(--surface2);}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.modal-hint{font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:-10px;margin-bottom:1rem;}
+.empty{text-align:center;font-size:11px;color:var(--text3);font-family:var(--mono);padding:12px 8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>// LEVERANCIERS & GROSSIERS — VHP AUTOPARTS SPIJKENISSE</h1>
+  <div class="sync"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">laden...</span></div>
+</header>
+
+<div class="toolbar">
+  <button class="btn primary" onclick="openAddModal()">+ Toevoegen</button>
+  <button class="btn" onclick="openAddColModal()">+ Categorie</button>
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="zoek op naam of merk..." oninput="doSearch(this.value)"/>
+    <div class="search-mode">
+      <button class="mode-btn active" id="mode-name" onclick="setMode('name')">naam</button>
+      <button class="mode-btn" id="mode-merk" onclick="setMode('merk')">merk</button>
+    </div>
+    <button class="btn" onclick="clearSearch()">✕</button>
+  </div>
+  <button class="btn danger" onclick="resetAll()">reset</button>
+</div>
+
+<div class="search-result-bar" id="result-bar"></div>
+<div class="legend">
+  <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">lagen:</span>
+  <div class="leg"><div class="leg-dot" style="background:var(--c1)"></div>Internationale concerns</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c2)"></div>Groothandels & importeurs (jij koopt hier)</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c3)"></div>Grossiersformules (netwerken)</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c4)"></div>Formule — eigen netwerk</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c5)"></div>Formule — in beweging</div>
+  <div class="leg"><div class="leg-dot" style="background:var(--c6)"></div>Zelfstandige grossiers (concurrenten)</div>
+</div>
+
+<div class="canvas" id="canvas"></div>
+
+<!-- modal leverancier -->
+<div class="modal-bg" id="add-modal" style="display:none">
+  <div class="modal">
+    <h2>+ leverancier / grossier toevoegen</h2>
+    <label>Naam</label>
+    <input type="text" id="m-name" placeholder="bijv. WM Fahrzeugteile"/>
+    <label>Type</label>
+    <select id="m-type">
+      <option value="concern">Concern / moederorganisatie</option>
+      <option value="groothandel">Groothandel (jij koopt hier in)</option>
+      <option value="importeur">Importeur / merkdistributeur</option>
+      <option value="formule">Grossiersformule (netwerk)</option>
+      <option value="formule-lid">Lid van grossiersformule</option>
+      <option value="grossier">Zelfstandige grossier (concurrent)</option>
+      <option value="overig">Overig</option>
+    </select>
+    <label>Notitie (optioneel)</label>
+    <textarea id="m-note" placeholder="adres, bijzonderheden, relatie..."></textarea>
+    <label>Merken die ze leveren</label>
+    <input type="text" id="m-merken" placeholder="bijv. Bosch, NGK, Febi, SKF (komma-gescheiden)"/>
+    <div class="modal-hint">Tip: vul merken in om later op merk te kunnen zoeken</div>
+    <label>Categorie</label>
+    <select id="m-col"></select>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('add-modal')">annuleren</button>
+      <button class="btn primary" onclick="addCard()">toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal categorie -->
+<div class="modal-bg" id="col-modal" style="display:none">
+  <div class="modal">
+    <h2>+ categorie aanmaken</h2>
+    <label>Naam</label><input type="text" id="cm-name"/>
+    <label>Laag / stijl</label>
+    <select id="cm-layer">
+      <option value="l1">Laag 1 — Internationale concerns (paars)</option>
+      <option value="l2">Laag 2 — Groothandels & importeurs (blauw)</option>
+      <option value="l3">Laag 3 — Grossiersformules (oranje)</option>
+      <option value="l4">Laag 4 — Eigen netwerk (rood)</option>
+      <option value="l5">Laag 5 — Formule in beweging (groen)</option>
+      <option value="l6">Laag 6 — Zelfstandige grossiers (cyaan)</option>
+    </select>
+    <label>Toelichting (optioneel)</label>
+    <input type="text" id="cm-note"/>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('col-modal')">annuleren</button>
+      <button class="btn primary" onclick="addCol()">aanmaken</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal bewerken -->
+<div class="modal-bg" id="edit-modal" style="display:none">
+  <div class="modal">
+    <h2>bewerken</h2>
+    <input type="hidden" id="em-id"/>
+    <label>Naam</label><input type="text" id="em-name"/>
+    <label>Type</label>
+    <select id="em-type">
+      <option value="concern">Concern / moederorganisatie</option>
+      <option value="groothandel">Groothandel (jij koopt hier in)</option>
+      <option value="importeur">Importeur / merkdistributeur</option>
+      <option value="formule">Grossiersformule (netwerk)</option>
+      <option value="formule-lid">Lid van grossiersformule</option>
+      <option value="grossier">Zelfstandige grossier (concurrent)</option>
+      <option value="overig">Overig</option>
+    </select>
+    <label>Notitie</label><textarea id="em-note"></textarea>
+    <label>Merken die ze leveren</label>
+    <input type="text" id="em-merken" placeholder="komma-gescheiden"/>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('edit-modal')">annuleren</button>
+      <button class="btn primary" onclick="saveEdit()">opslaan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'vhp_leveranciers_v1';
+let state = {cols:[], cards:[]};
+let dragCardId = null, saveTimer = null;
+let searchMode = 'name', currentQuery = '';
+
+const layerColors = {l1:'var(--c1)',l2:'var(--c2)',l3:'var(--c3)',l4:'var(--c4)',l5:'var(--c5)',l6:'var(--c6)'};
+const typeLabels = {
+  concern:'concern', groothandel:'leverancier', importeur:'importeur',
+  formule:'formule', 'formule-lid':'lid formule', grossier:'concurrent', overig:'overig'
+};
+const typeBg = {
+  concern:'rgba(192,132,252,.12)', groothandel:'rgba(143,212,248,.12)',
+  importeur:'rgba(240,168,66,.12)', formule:'rgba(163,230,53,.12)',
+  'formule-lid':'rgba(163,230,53,.08)', grossier:'rgba(34,211,238,.12)', overig:'rgba(120,120,120,.12)'
+};
+const typeColor = {
+  concern:'var(--c1)', groothandel:'var(--c2)', importeur:'var(--c3)',
+  formule:'var(--c5)', 'formule-lid':'var(--c5)', grossier:'var(--c6)', overig:'var(--text2)'
+};
+
+const defaultState = {
+  cols: [
+    {id:'c1', title:'Internationale concerns', layer:'l1', note:'Eigenaren van de grote groothandelsketens — bepalen de markt'},
+    {id:'c2', title:'Groothandels & importeurs', layer:'l2', note:'Hier koop jij als grossier je onderdelen in — directe leveranciers'},
+    {id:'c3', title:'AllParts — formule & leden', layer:'l3', note:'Onafhankelijke inkoopformule • Leverancier: LKQ • Huismerk: Drive+ • Garageformules: Auto Excellent, CarExpert, James Autoservice, Car Service Partner, EV Pro'},
+    {id:'c4', title:'Precisium — formule & leden', layer:'l3', note:'Franse grossiersformule via Alliance Automotive Group (GPC) • Actief in Benelux sinds 2019 • Biedt trainingen, logistiek en garageconcepten'},
+    {id:'c5', title:'PartsPoint — eigen vestigingen', layer:'l4', note:'Eigen netwerk van AAG Benelux — 100+ vestigingen NL • Huismerk: NAPA • Garageformules: CarProf, Autovakmeester, Autoservice Totaal, Bosch Car Service, AutoCrew'},
+    {id:'c6', title:'Vrooam — formule & leden', layer:'l5', note:'⚠ Formule in verschuiving — overgestapt van LKQ naar Doyen (Autodis) • Kans: weglopende leden zoeken nieuwe partner'},
+    {id:'c7', title:'CarX Benelux', layer:'l3', note:'⚠ Nog te onderzoeken — UD Autoparts en XtraParts zeker lid'},
+    {id:'cad', title:'Autodistribution — leden', layer:'l3', note:'Formule van Doyen Automotive (Autodis Group) • 15+ zelfstandige grossiers in NL • Doyen levert ook aan Vrooam • Technisch platform: OmniTech'},
+    {id:'c8', title:'Zelfstandige grossiers', layer:'l6', note:'Doen hetzelfde als VHP — GEEN leveranciers maar concurrenten. Wel interessant als contacten.'},
+    {id:'c9', title:'Ongesorteerd', layer:'l2', note:''},
+    {id:'col', title:'Online / cross-border leveranciers', layer:'l2', note:'Leveren online vanuit buitenland — geen fysieke vestiging of eigen bezorgdienst in NL • Interessant voor prijsvergelijking en aanvulling • Levertijd 1-2 dagen i.p.v. zelfde dag • Let op: Molco is GEEN online leverancier maar gewone NL groothandel met eigen routes'},
+  ],
+  cards: [
+    // Concerns
+    {id:'k1',col:'c1',name:'LKQ Corporation',type:'concern',note:'Grootste onafhankelijke onderdelen concern wereldwijd • Eigenaar Rhiag, Stahlgruber • Hoofdleverancier AllParts • Levert ook direct aan garages',merken:[]},
+    {id:'k2',col:'c1',name:'Genuine Parts Company (GPC)',type:'concern',note:'Grootste auto-onderdelen concern ter wereld • Eigenaar Alliance Automotive Group → Precisium + PartsPoint',merken:[]},
+    {id:'k3',col:'c1',name:'Autodis Group',type:'concern',note:'Moeder van Doyen Automotive en Carter Cash • Nu ook leverancier Vrooam',merken:[]},
+    {id:'k4',col:'c1',name:'Stellantis Parts & Services',type:'concern',note:'OEM onderdelen Fiat, Peugeot, Citroën, Opel, Jeep e.a.',merken:['Mopar','Eurorepar']},
+    // Groothandels & importeurs
+    {id:'k10',col:'c2',name:'Rhiag Netherlands',type:'groothandel',note:'Dochter van LKQ — breed assortiment alle merken',merken:['Rhiag','Bosch','NGK','Febi','Gates','SKF','Valeo','Monroe']},
+    {id:'k11',col:'c2',name:'Stahlgruber Nederland',type:'groothandel',note:'Dochter van LKQ — sterk in werkplaatsbenodigdheden en gereedschap',merken:['Bosch','Hella','Continental','Mahle','Mann+Hummel']},
+    {id:'k12',col:'c2',name:'Alliance Automotive Group Benelux',type:'groothandel',note:'Dochter van GPC • Runt Precisium (formule zelfstandigen) én PartsPoint (eigen netwerk) • Hoofdkantoor Ede',merken:['NAPA','Drive+','Bosch','NGK','Febi','Valeo']},
+    {id:'k13',col:'c2',name:'Doyen Automotive',type:'groothandel',note:'Onderdeel van Autodis Group • Leverancier van Vrooam (na overstap van LKQ) én Autodistribution formule',merken:['Doyen','Bosch','Valeo','Febi']},
+    {id:'k14',col:'c2',name:'WM Fahrzeugteile / WM Automaterialen',type:'groothandel',note:'Europees marktleider • 2 mrd omzet • 230 vestigingen 6 landen • NL: Florijnstraat 60, Ridderkerk • Ook gereedschap en werkplaatsuitrusting',merken:['Bosch','NGK','Febi','Gates','SKF','Valeo','Hella','Mann+Hummel','Brembo','Monroe','Sachs']},
+    {id:'k15',col:'c2',name:'Inter Cars',type:'importeur',note:'Een van de grootste distributeurs Europa • Sterk Centraal- en Oost-Europa • Benelux logistiek centrum Heusden-Zolder (BE) • 5 mln artikelen catalogus',merken:['Blic','Bosch','NGK','Febi','Gates','SKF','Valeo','Continental','Delphi','TRW','Hella']},
+    {id:'k16',col:'c2',name:'Motor-Parts (MP)',type:'importeur',note:'Benelux + France gerichte groothandel • Al actief sinds jaren 30 • Concurreert met originele onderdelen als Global Supplier • Familiaal karakter',merken:['Bosch','NGK','Febi','Valeo','Gates','SKF','Continental']},
+    {id:'k17',col:'c2',name:'EPS Automotive',type:'importeur',note:'Nederlands familiebedrijf Waalwijk • Sterk in remmen maar allround • Levert aan grossiers, raceteams en defensie • Spuiweg 23, Waalwijk',merken:['Jurid','SKF','Lesjöfors','Kilen','NGK','Lazer Lamps','Pagid']},
+    {id:'k18',col:'c2',name:'ATR International',type:'groothandel',note:'Coöperatie van onafhankelijke groothandels Europa',merken:[]},
+    {id:'k19',col:'c2',name:'Inter-Team Nederland',type:'importeur',note:'Pools-Nederlandse grossier — scherpe inkoopprijzen',merken:[]},
+    {id:'k20',col:'c2',name:'BG Automotive',type:'groothandel',note:'Breed assortiment, snelle levering NL',merken:[]},
+    {id:'k21',col:'c2',name:'Elit Netherlands',type:'importeur',note:'Oost-Europees concern, actief in NL',merken:[]},
+    {id:'mol1',col:'c2',name:'Molco Car Parts',type:'groothandel',note:'Nederlandse onafhankelijke groothandel • Opgericht 1978 • Vestiging Wijchen/Druten • Koopt direct in bij fabrieken — geen tussenpersoon • Eigen bezorgroutes NL • Eigen merken: Ashuki en Palidium (3 jaar garantie) • 11 mln referenties, 250+ merken',merken:['Ashuki','Palidium','Bosch','NGK','Febi','Gates','SKF','Valeo']},
+    {id:'k22',col:'c2',name:'Robert Bosch Nederland',type:'importeur',note:'Officieel Bosch distributeur NL',merken:['Bosch']},
+    {id:'k23',col:'c2',name:'Valeo Service Nederland',type:'importeur',note:'Verlichting, koppeling, klimaat',merken:['Valeo']},
+    {id:'k24',col:'c2',name:'Denso Europe',type:'importeur',note:'Japanse OEM: bougie, AC, starters',merken:['Denso']},
+    {id:'k25',col:'c2',name:'NGK Spark Plugs Nederland',type:'importeur',note:'Bougies, lambdasensors',merken:['NGK','NTK']},
+    {id:'k26',col:'c2',name:'Febi Bilstein / Bilstein Group',type:'importeur',note:'Chassisonderdelen, stuuronderdelen',merken:['Febi','Bilstein']},
+    {id:'k27',col:'c2',name:'Gates Europe',type:'importeur',note:'Riemen, slangen, koeling',merken:['Gates']},
+    {id:'k28',col:'c2',name:'SKF Automotive NL',type:'importeur',note:'Lagers, wiellagerkits, afdichtingen',merken:['SKF','VKBA','VKBP']},
+    {id:'k29',col:'c2',name:'Continental Automotive NL',type:'importeur',note:'Sensoren, remonderdelen, brandstofpompen',merken:['Continental','VDO','ATE']},
+    {id:'k30',col:'c2',name:'Delphi Technologies',type:'importeur',note:'Inspuiting, remmen, elektrisch',merken:['Delphi']},
+    {id:'k31',col:'c2',name:'TRW / ZF Aftermarket NL',type:'importeur',note:'Remmen, stuur, ophanging',merken:['TRW','ZF','Lemförder','Sachs']},
+    // AllParts formule (samengevat — leden zijn te zien in kaart)
+    {id:'ap0',col:'c3',name:'AllParts (formule)',type:'formule',note:'Onafhankelijke inkoopformule • 45+ leden in NL • Leverancier: LKQ',merken:['Drive+','Bosch','NGK','Febi','Gates','SKF','Valeo','Monroe','Sachs','Hella']},
+    {id:'ap1',col:'c3',name:'AllParts Cruuswaert ★',type:'formule-lid',note:'Oberonweg 12-16, SPIJKENISSE — directe buur & concurrent • ma-vr 08:00-17:30',merken:['Drive+']},
+    {id:'ap2',col:'c3',name:'AllParts Haga Ridderkerk',type:'formule-lid',note:'Noordenweg 79A, Ridderkerk • ma-vr 08:00-17:30',merken:['Drive+']},
+    {id:'ap3',col:'c3',name:'AllParts Jatech Capelle a/d IJssel',type:'formule-lid',note:'Kanaalweg 4, Capelle a/d IJssel • ma-vr 08:00-17:00',merken:['Drive+']},
+    {id:'ap4',col:'c3',name:'AllParts Jatech Krimpen a/d IJssel',type:'formule-lid',note:'Van der Giessenweg 13, Krimpen • ma-vr 08:00-17:00',merken:['Drive+']},
+    // Precisium formule
+    {id:'pr0',col:'c4',name:'Precisium (formule)',type:'formule',note:'Franse grossiersformule via AAG Benelux (GPC) • 23 leden in NL',merken:['Drive+','Bosch','NGK','Febi','Valeo','NAPA']},
+    {id:'pr1',col:'c4',name:'Wiveco Oud Beijerland',type:'formule-lid',note:'Oud Beijerland — regio Spijkenisse',merken:[]},
+    {id:'pr2',col:'c4',name:'AGO Techniek Oude Tonge',type:'formule-lid',note:'Oude Tonge, Goeree-Overflakkee',merken:[]},
+    {id:'pr3',col:'c4',name:'UD Autoparts Amersfoort',type:'formule-lid',note:'Amersfoort — ook lid CarX Benelux',merken:[]},
+    {id:'pr4',col:'c4',name:'XtraParts Dordrecht',type:'formule-lid',note:'Dordrecht — ook lid CarX Benelux',merken:[]},
+    // PartsPoint
+    {id:'pp0',col:'c5',name:'PartsPoint (netwerk)',type:'formule',note:'100+ vestigingen NL • Eigen netwerk AAG Benelux • Huismerk NAPA • zie partspoint.nl/vestigingen',merken:['NAPA','Bosch','Valeo','NGK','SKF','Continental','Gates']},
+    // Vrooam
+    {id:'vr0',col:'c6',name:'Vrooam (formule)',type:'formule',note:'⚠ In verschuiving — overgestapt van LKQ naar Doyen • Koskamp is grootste lid',merken:[]},
+    {id:'vr1',col:'c6',name:'Koskamp (15 vestigingen)',type:'formule-lid',note:'Grootste Vrooam-lid • Hoofdkantoor Den Ham • Vestigingen: Arnhem, Assen, Emmen, Groningen, Hengelo, Kampen, Leeuwarden, Lelystad, Nijmegen, Soest, Steenwijk, Zutphen',merken:[]},
+    // CarX
+    {id:'cx0',col:'c7',name:'CarX Benelux',type:'formule',note:'⚠ Nog te onderzoeken • UD Autoparts en XtraParts zijn zeker lid',merken:[]},
+    // Autodistribution leden — formule van Doyen (Autodis Group)
+    {id:'ad0',col:'cad',name:'Autodistribution (formule)',type:'formule',note:'Formule van Doyen Automotive (Autodis Group) • Zelfstandige ondernemers • Tech-support: OmniTech • Doyen levert ook aan Vrooam',merken:[]},
+    {id:'ad1',col:'cad',name:'Wijmar Enkhuizen',type:'formule-lid',note:'De Dolfijn 14, Enkhuizen • ma-vr 08:15-17:30, za 09:00-13:00 • 0228-315772',merken:[]},
+    {id:'ad2',col:'cad',name:'Go-Autoparts Wijk bij Duurstede',type:'formule-lid',note:'Keulenaar 6a, Wijk bij Duurstede • ma/wo/vr 08:00-17:30, di/do 08:00-20:00, za 08:00-12:00 • 0343-597676',merken:[]},
+    {id:'ad3',col:'cad',name:'Automaterialen Tiel',type:'formule-lid',note:'Faradaystraat 10, Tiel • ma-vr 08:00-17:30, za 08:30-12:30 • 0344-722922',merken:[]},
+    {id:'ad4',col:'cad',name:'AGJ Automotive Elburg',type:'formule-lid',note:'Robbertsmatenstraat 21, Elburg • ma-vr 08:00-18:00, za 08:30-16:00 • 0525-685415',merken:[]},
+    {id:'ad5',col:'cad',name:'Automaterialen Heesch',type:'formule-lid',note:'Bosschebaan 78, Heesch • ma-vr 08:00-17:30, za 08:30-13:00 • 0412-456263',merken:[]},
+    {id:'ad6',col:'cad',name:'AutoParts Zwolle',type:'formule-lid',note:'Voltastraat 17H, Zwolle • ma-vr 08:00-17:00, za 08:30-13:00 • 0383-760020',merken:[]},
+    {id:'ad7',col:'cad',name:'Excluparts Nijmegen',type:'formule-lid',note:'Binderskampweg 40, Nijmegen • ma-vr 08:00-17:30, za 08:30-12:00 • 024-3710510',merken:[]},
+    {id:'ad8',col:'cad',name:'Maromax Automaterialen Tilburg',type:'formule-lid',note:'Lovense Kanaaldijk 3a, Tilburg • ma-vr 08:00-17:00, za 08:00-13:00 • 013-5820505',merken:[]},
+    {id:'ad9',col:'cad',name:'Swieringa Automaterialen Sneek',type:'formule-lid',note:'Lorentzstraat 11, Sneek • ma-vr 08:00-18:00, za 09:00-17:00 • 0515-411533',merken:[]},
+    {id:'ad10',col:'cad',name:'Swieringa Automaterialen Heerenveen',type:'formule-lid',note:'Skrynmakker 8, Heerenveen • ma-vr 08:00-17:30, za 09:00-12:30 • 0513-623178',merken:[]},
+    {id:'ad11',col:'cad',name:'Swieringa Automaterialen Gorredijk',type:'formule-lid',note:'De Kromten 16, Gorredijk • ma-vr 08:00-18:00, za 09:00-17:00 • 0513-463284',merken:[]},
+    {id:'ad12',col:'cad',name:'Growa Automaterialen Lochem',type:'formule-lid',note:'Aalsvoort 3, Lochem • ma-vr 08:00-17:30, za 09:00-13:00 • 0573-257745',merken:[]},
+    {id:'ad13',col:'cad',name:'Growa Automaterialen Lichtenvoorde',type:'formule-lid',note:'Newtonstraat 1, Lichtenvoorde • ma-vr 08:00-17:30, za 09:00-13:00 • 0544-482728',merken:[]},
+    {id:'ad14',col:'cad',name:'Holland Auto Parts Veldhoven',type:'formule-lid',note:'Heuvel 58, Veldhoven • ma-vr 08:30-18:00, za 09:00-16:00 • 040-2543301',merken:[]},
+    {id:'ad15',col:'cad',name:'Boensma Goor',type:'formule-lid',note:'Schoolstraat 110, Goor • ma-vr 08:30-18:00, za 08:30-13:00 • 0547-276180',merken:[]},
+    {id:'ad16',col:'cad',name:'Kneepkens Automaterialen Weert',type:'formule-lid',note:'Kessenichstraat 11-13, Weert • ma-vr 08:30-18:00, za 08:30-13:00 • 0495-541232',merken:[]},
+    {id:'ad17',col:'cad',name:'Van Essen Automotive Enschede',type:'formule-lid',note:'Esstraat 18, Enschede • ma-vr 08:30-18:00, za 09:00-16:00 • 053-4310200',merken:[]},
+    {id:'ad18',col:'cad',name:'PJ Producten Nuth',type:'formule-lid',note:'Thermiekstraat 5, Nuth • ma-vr 08:00-17:30, za 08:00-13:00 • 045-4059276',merken:[]},
+    // Zelfstandige grossiers
+    {id:'g1',col:'c8',name:'Kilinclar Automaterialen',type:'grossier',note:'16 vestigingen • Sterk in regio Rotterdam/Spijkenisse • Directe concurrent • Begonnen Rotterdam-Zuid, nu ook Barendrecht, Schiedam, Vlaardingen, Breda, Dordrecht, Almere, Deventer, Tilburg, Zoetermeer, Hoogvliet',merken:[]},
+    {id:'g2',col:'c8',name:'Koskamp (als zelfstandige)',type:'grossier',note:'Ook buiten Vrooam actief als eigen organisatie • 15 vestigingen Noord/Oost NL',merken:[]},
+    // Online / cross-border leveranciers
+    {id:'ol1',col:'col',name:'Auto Partner SA',type:'importeur',note:'Pools concern • Levert cross-border vanuit Polen — geen eigen Benelux-vestiging • 280.000 productsoorten • Eigen merken: MaXgear, ROOKS, Quaro, Bovez • Interessant voor scherpe inkoopprijzen maar levertijd en minimumafname checken',merken:['MaXgear','ROOKS','Quaro','Bovez','NGK','Bosch','Febi','Gates','SKF']},
+    {id:'ol2',col:'col',name:'AUTODOC PRO',type:'importeur',note:'Duits (niet Pools) • Begonnen als B2C webshop, nu ook B2B via AUTODOC PRO • Claimt 40% goedkoper dan bestaande leveranciers • Levert vanuit Berlijn (1-2 dagen NL) • In 2025 nieuw magazijn Gent voor snellere Benelux-levering • Geen dagelijkse route — online bestellen',merken:['Bosch','NGK','Febi','Valeo','Gates','SKF','Continental','Brembo','Sachs','Monroe']},
+  ]
+};
+
+function setSyncStatus(s,t){document.getElementById('sync-dot').className='sync-dot '+s;document.getElementById('sync-label').textContent=t;}
+async function saveCloud(){setSyncStatus('busy','opslaan...');try{await window.storage.set(STORAGE_KEY,JSON.stringify(state));setSyncStatus('ok','gesynchroniseerd');}catch(e){setSyncStatus('err','opslaan mislukt');}}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveCloud,900);}
+async function loadCloud(){
+  setSyncStatus('busy','laden...');
+  try{
+    const r=await window.storage.get(STORAGE_KEY);
+    if(r&&r.value){const p=JSON.parse(r.value);state=(p.cards&&p.cards.length>10)?p:JSON.parse(JSON.stringify(defaultState));}
+    else{state=JSON.parse(JSON.stringify(defaultState));}
+    setSyncStatus('ok','gesynchroniseerd');
+  }catch(e){state=JSON.parse(JSON.stringify(defaultState));setSyncStatus('err','laden mislukt — standaard geladen');}
+  render();
+}
+
+function render(){
+  const canvas=document.getElementById('canvas');
+  canvas.innerHTML='';
+  state.cols.forEach(col=>{
+    const cards=state.cards.filter(c=>c.col===col.id);
+    const lc=layerColors[col.layer]||'var(--border2)';
+    const el=document.createElement('div');
+    el.className=`col ${col.layer||''}`;
+    el.dataset.col=col.id;
+    el.innerHTML=`
+      <div class="col-header">
+        <span class="col-layer" style="background:${lc}22;color:${lc}">${col.layer?.replace('l','L')??''}</span>
+        <div class="col-title" contenteditable="true" onblur="renameCol('${col.id}',this.textContent)">${esc(col.title)}</div>
+        <span class="col-count">${cards.length}</span>
+        <span class="col-del" onclick="deleteCol('${col.id}')">×</span>
+      </div>
+      ${col.note?`<div class="col-note">${esc(col.note)}</div>`:''}
+      <div class="drop-zone" data-col="${col.id}">
+        ${cards.length===0?'<div class="empty">sleep hier naartoe</div>':''}
+        ${cards.map(c=>cardHTML(c)).join('')}
+      </div>`;
+    canvas.appendChild(el);
+  });
+  const addBtn=document.createElement('div');
+  addBtn.className='add-col-btn';addBtn.textContent='+ categorie toevoegen';addBtn.onclick=openAddColModal;
+  canvas.appendChild(addBtn);
+  bindDrag();
+  if(currentQuery) doSearch(currentQuery);
+}
+
+function cardHTML(c){
+  const merken=(c.merken||[]);
+  const tl=typeLabels[c.type]||c.type;
+  const tbg=typeBg[c.type]||'rgba(120,120,120,.1)';
+  const tcl=typeColor[c.type]||'var(--text2)';
+  const merkHTML=merken.length?`<div class="card-merken">${merken.map(m=>`<span class="merk-tag" onclick="searchMerk('${esc(m)}')">${esc(m)}</span>`).join('')}</div>`:'';
+  return `<div class="card" draggable="true" data-id="${c.id}">
+    <div class="card-actions">
+      <button class="card-btn" onclick="openEdit('${c.id}')">✎</button>
+      <button class="card-btn del" onclick="deleteCard('${c.id}')">✕</button>
+    </div>
+    <div class="card-name">${esc(c.name)}</div>
+    ${c.note?`<div class="card-note">${esc(c.note)}</div>`:''}
+    ${merkHTML}
+    <span class="card-type-badge" style="background:${tbg};color:${tcl}">${tl}</span>
+  </div>`;
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Zoekfuncties
+function setMode(m){
+  searchMode=m;
+  document.getElementById('mode-name').classList.toggle('active',m==='name');
+  document.getElementById('mode-merk').classList.toggle('active',m==='merk');
+  document.getElementById('search-input').placeholder=m==='merk'?'zoek op merk (bijv. Bosch, SKF, Brembo)...':'zoek op naam leverancier...';
+  const q=document.getElementById('search-input').value;
+  if(q) doSearch(q);
+}
+
+function searchMerk(merk){
+  document.getElementById('search-input').value=merk;
+  setMode('merk');
+  doSearch(merk);
+}
+
+function doSearch(q){
+  currentQuery=q.toLowerCase().trim();
+  const bar=document.getElementById('result-bar');
+  if(!currentQuery){
+    document.querySelectorAll('.card').forEach(el=>{el.classList.remove('highlight');el.classList.remove('hidden');});
+    document.querySelectorAll('.col').forEach(el=>el.classList.remove('dimmed'));
+    document.querySelectorAll('.merk-tag').forEach(t=>t.classList.remove('match'));
+    bar.style.display='none';
+    return;
+  }
+  let matchCount=0;
+  const matchedCols=new Set();
+  document.querySelectorAll('.card').forEach(el=>{
+    const id=el.dataset.id;
+    const card=state.cards.find(c=>c.id===id);
+    if(!card) return;
+    let match=false;
+    if(searchMode==='name'){
+      match=card.name.toLowerCase().includes(currentQuery)||(card.note||'').toLowerCase().includes(currentQuery);
+    } else {
+      match=(card.merken||[]).some(m=>m.toLowerCase().includes(currentQuery));
+    }
+    el.classList.toggle('highlight',match);
+    el.classList.toggle('hidden',false);
+    if(match){
+      matchCount++;
+      const colEl=el.closest('.col');
+      if(colEl) matchedCols.add(colEl.dataset.col);
+    }
+    // highlight merkentags
+    el.querySelectorAll('.merk-tag').forEach(t=>{
+      t.classList.toggle('match',searchMode==='merk'&&t.textContent.toLowerCase().includes(currentQuery));
+    });
+  });
+  document.querySelectorAll('.col').forEach(el=>{
+    el.classList.toggle('dimmed',matchCount>0&&!matchedCols.has(el.dataset.col));
+  });
+  if(matchCount>0){
+    bar.style.display='block';
+    bar.textContent=searchMode==='merk'
+      ?`${matchCount} leverancier${matchCount!==1?'s':''} lever${matchCount!==1?'en':'t'} "${document.getElementById('search-input').value}"`
+      :`${matchCount} resultaat${matchCount!==1?'en':''} voor "${document.getElementById('search-input').value}"`;
+  } else {
+    bar.style.display='block';
+    bar.textContent=searchMode==='merk'?`Geen leverancier gevonden voor merk "${document.getElementById('search-input').value}"`:`Geen resultaten`;
+    bar.style.color='var(--danger)';
+  }
+}
+
+function clearSearch(){
+  document.getElementById('search-input').value='';
+  currentQuery='';
+  doSearch('');
+}
+
+// drag & drop
+function bindDrag(){
+  document.querySelectorAll('.card').forEach(el=>{
+    el.addEventListener('dragstart',()=>{dragCardId=el.dataset.id;setTimeout(()=>el.classList.add('dragging'),0);});
+    el.addEventListener('dragend',()=>{el.classList.remove('dragging');document.querySelectorAll('.drop-zone').forEach(z=>z.classList.remove('drag-over'));});
+  });
+  document.querySelectorAll('.drop-zone').forEach(zone=>{
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+    zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+    zone.addEventListener('drop',e=>{
+      e.preventDefault();zone.classList.remove('drag-over');
+      if(dragCardId&&zone.dataset.col){const card=state.cards.find(c=>c.id===dragCardId);if(card&&card.col!==zone.dataset.col){card.col=zone.dataset.col;render();scheduleSave();}}
+    });
+  });
+}
+
+function renameCol(id,name){const col=state.cols.find(c=>c.id===id);if(col&&name.trim()){col.title=name.trim();scheduleSave();}}
+function deleteCol(id){
+  if(!confirm('Categorie verwijderen? Kaarten gaan naar Ongesorteerd.'))return;
+  if(!state.cols.find(c=>c.id==='c9'))state.cols.push({id:'c9',title:'Ongesorteerd',layer:'l2',note:''});
+  state.cards.forEach(c=>{if(c.col===id)c.col='c9';});
+  state.cols=state.cols.filter(c=>c.id!==id);
+  render();scheduleSave();
+}
+function deleteCard(id){state.cards=state.cards.filter(c=>c.id!==id);render();scheduleSave();}
+
+function openAddModal(){
+  document.getElementById('m-col').innerHTML=state.cols.map(c=>`<option value="${c.id}">${esc(c.title)}</option>`).join('');
+  document.getElementById('m-name').value='';document.getElementById('m-note').value='';document.getElementById('m-merken').value='';
+  document.getElementById('add-modal').style.display='flex';setTimeout(()=>document.getElementById('m-name').focus(),50);
+}
+function openAddColModal(){
+  document.getElementById('cm-name').value='';document.getElementById('cm-note').value='';
+  document.getElementById('col-modal').style.display='flex';setTimeout(()=>document.getElementById('cm-name').focus(),50);
+}
+function openEdit(id){
+  const c=state.cards.find(x=>x.id===id);if(!c)return;
+  document.getElementById('em-id').value=id;document.getElementById('em-name').value=c.name;
+  document.getElementById('em-type').value=c.type;document.getElementById('em-note').value=c.note||'';
+  document.getElementById('em-merken').value=(c.merken||[]).join(', ');
+  document.getElementById('edit-modal').style.display='flex';setTimeout(()=>document.getElementById('em-name').focus(),50);
+}
+function closeModal(id){document.getElementById(id).style.display='none';}
+function addCard(){
+  const name=document.getElementById('m-name').value.trim();if(!name)return;
+  const merkenRaw=document.getElementById('m-merken').value;
+  const merken=merkenRaw?merkenRaw.split(',').map(m=>m.trim()).filter(Boolean):[];
+  state.cards.push({id:'k'+Date.now(),col:document.getElementById('m-col').value,name,type:document.getElementById('m-type').value,note:document.getElementById('m-note').value.trim(),merken});
+  closeModal('add-modal');render();scheduleSave();
+}
+function addCol(){
+  const name=document.getElementById('cm-name').value.trim();if(!name)return;
+  state.cols.push({id:'c'+Date.now(),title:name,layer:document.getElementById('cm-layer').value,note:document.getElementById('cm-note').value.trim()});
+  closeModal('col-modal');render();scheduleSave();
+}
+function saveEdit(){
+  const id=document.getElementById('em-id').value;const c=state.cards.find(x=>x.id===id);if(!c)return;
+  c.name=document.getElementById('em-name').value.trim()||c.name;c.type=document.getElementById('em-type').value;c.note=document.getElementById('em-note').value.trim();
+  const merkenRaw=document.getElementById('em-merken').value;
+  c.merken=merkenRaw?merkenRaw.split(',').map(m=>m.trim()).filter(Boolean):[];
+  closeModal('edit-modal');render();scheduleSave();
+}
+
+function resetAll(){
+  if(!confirm('Alles resetten? Alle wijzigingen gaan verloren.'))return;
+  state=JSON.parse(JSON.stringify(defaultState));render();saveCloud();
+}
+['add-modal','col-modal','edit-modal'].forEach(id=>{document.getElementById(id).addEventListener('click',function(e){if(e.target===this)closeModal(id);});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')['add-modal','col-modal','edit-modal'].forEach(closeModal);});
+loadCloud();
+</script>
+</body>
+</html>

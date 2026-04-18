@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stappenplan — Auto-onderdelen grossier</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; padding: 1.5rem; color: #1a1a1a; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 1.25rem; }
+.stats { display: flex; gap: 8px; margin-bottom: 1.25rem; }
+.stat { flex: 1; background: #fff; border-radius: 10px; border: 0.5px solid #e0e0d8; padding: 0.75rem 1rem; }
+.stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+.stat-val { font-size: 20px; font-weight: 500; }
+.phase { margin-bottom: 1.25rem; border-radius: 12px; border: 0.5px solid #e0e0d8; overflow: hidden; background: #fff; }
+.phase-header { display: flex; align-items: center; gap: 12px; padding: 1rem 1.25rem; cursor: pointer; user-select: none; }
+.phase-header:hover { background: #f8f8f6; }
+.phase-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; flex-shrink: 0; }
+.phase-title { font-size: 15px; font-weight: 500; flex: 1; }
+.phase-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+.chevron { font-size: 12px; color: #aaa; transition: transform 0.2s; }
+.chevron.open { transform: rotate(90deg); }
+.progress-bar { height: 4px; background: #f0f0ec; border-radius: 2px; margin-top: 4px; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.phase-body { border-top: 0.5px solid #e0e0d8; padding: 1rem 1.25rem; display: none; }
+.phase-body.open { display: block; }
+.task { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 0.5px solid #f0f0ec; }
+.task:last-child { border-bottom: none; padding-bottom: 0; }
+.task-check { width: 18px; height: 18px; border-radius: 4px; border: 1.5px solid #ccc; flex-shrink: 0; margin-top: 2px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+.task-check.done { background: #1D9E75; border-color: #1D9E75; }
+.task-check.done::after { content: '✓'; color: white; font-size: 11px; font-weight: 500; }
+.task-text { font-size: 14px; line-height: 1.5; flex: 1; }
+.task-text.done { color: #aaa; text-decoration: line-through; }
+.task-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<h1>Stappenplan — Auto-onderdelen grossier Spijkenisse</h1>
+<div class="stats">
+  <div class="stat"><div class="stat-label">Totaal taken</div><div class="stat-val" id="s-total">0</div></div>
+  <div class="stat"><div class="stat-label">Afgerond</div><div class="stat-val" id="s-done" style="color:#1D9E75">0</div></div>
+  <div class="stat"><div class="stat-label">Voortgang</div><div class="stat-val" id="s-pct">0%</div></div>
+</div>
+<div id="phases"></div>
+<script>
+const STORAGE_KEY = 'onderdelen_grossier_v1';
+const phases = [
+  { title:"Fase 1 — Bedrijfsopzet & planning", numBg:"#B5D4F4", numColor:"#0C447C", badge:"Start hier", badgeBg:"#B5D4F4", badgeTxt:"#0C447C", bar:"#378ADD",
+    tasks:[
+      {text:"Businessplan opstellen: welke onderdelen, welke doelgroep (garages, dealers, exporteurs)"},
+      {text:"Assortiment bepalen: nieuw, occasion, of beide"},
+      {text:"Merken en segmenten kiezen (Aziatisch, Europees, alle merken)"},
+      {text:"KvK-inschrijving controleren of aanpassen voor nieuwe activiteit", tag:"Juridisch"},
+      {text:"Financiering en startkapitaal regelen voor eerste inkoopvoorraad", tag:"Financieel"},
+      {text:"Eigen garage (pand 1) als eerste vaste afnemer vastleggen"},
+    ]},
+  { title:"Fase 2 — Vergunningen & regelgeving", numBg:"#FAC775", numColor:"#633806", badge:"Verplicht", badgeBg:"#FAC775", badgeTxt:"#633806", bar:"#EF9F27",
+    tasks:[
+      {text:"Bestemmingsplan checken: is groothandel auto-onderdelen toegestaan op de locatie?", tag:"Vergunning"},
+      {text:"Omgevingsvergunning aanvragen indien verbouwing pand 2 nodig is", tag:"Vergunning"},
+      {text:"Opslageisen navragen voor gevaarlijke stoffen (accu's, airbags, vloeistoffen)", tag:"Milieu"},
+      {text:"Milieucategorie van de activiteit bepalen bij gemeente", tag:"Milieu"},
+      {text:"Bedrijfsaansprakelijkheidsverzekering afsluiten", tag:"Financieel"},
+      {text:"Productaansprakelijkheid verzekeren (verplicht bij verkoop onderdelen)", tag:"Financieel"},
+      {text:"AVG-beleid opstellen voor klant- en leveranciersdata", tag:"Juridisch"},
+    ]},
+  { title:"Fase 3 — Inrichting pand 2 & magazijn", numBg:"#9FE1CB", numColor:"#085041", badge:"Inrichting", badgeBg:"#9FE1CB", badgeTxt:"#085041", bar:"#1D9E75",
+    tasks:[
+      {text:"Plattegrond opmaken op basis van maten (tekening volgt)"},
+      {text:"Stellingensysteem kiezen en offertes opvragen (zwaar of licht, merk, indeling)"},
+      {text:"Indelingssysteem bepalen: op merk, categorie, artikelnummer of locatiecode"},
+      {text:"Magazijn 5x5m inrichten: welke onderdelen hier, hoe bereikbaar?"},
+      {text:"Balie of afhaalloket inrichten voor garages die zelf komen ophalen"},
+      {text:"Werkplek inrichten: computer, labelprinter, barcodescanner"},
+      {text:"Verlichting, verwarming en ventilatie controleren en aanpassen"},
+      {text:"Camerabewaking installeren binnen en buiten pand 2"},
+      {text:"Terrein indelen: aanrijroute vrachtwagen, laad-/loszone, parkeervak klanten"},
+      {text:"Totale inrichtingskosten berekenen en offertes vergelijken", tag:"Financieel"},
+    ]},
+  { title:"Fase 4 — Leveranciers & inkoop", numBg:"#F4C0D1", numColor:"#72243E", badge:"Inkoop", badgeBg:"#F4C0D1", badgeTxt:"#72243E", bar:"#D4537E",
+    tasks:[
+      {text:"Groothandels benaderen: LKQ, Rhiag, Stahlgruber, Alliance Automotive"},
+      {text:"Importeurs van A-merken contacteren voor dealerschap (Bosch, NGK, Febi, Valeo)"},
+      {text:"Sloopbedrijven in kaart brengen voor occasion-onderdelen"},
+      {text:"Leveranciersafspraken vergelijken: prijs, minimumafname, levertijd, retourbeleid"},
+      {text:"Eerste proefbestellingen plaatsen en kwaliteit beoordelen"},
+      {text:"Leveranciersmatrix opstellen: score op prijs, betrouwbaarheid, levertijd"},
+      {text:"Inkoopvoorwaarden en betalingstermijnen vastleggen per leverancier", tag:"Juridisch"},
+    ]},
+  { title:"Fase 5 — Software & administratie", numBg:"#CECBF6", numColor:"#3C3489", badge:"Beheer", badgeBg:"#CECBF6", badgeTxt:"#3C3489", bar:"#7F77DD",
+    tasks:[
+      {text:"Voorraadbeheersysteem kiezen voor auto-onderdelen (Exact, Odoo of branchespecifiek)", tag:"IT"},
+      {text:"Onderdelencatalogus koppelen: TecDoc of HaynesPro voor artikelidentificatie", tag:"IT"},
+      {text:"Barcode-/QR-labelsysteem opzetten voor stellingen en artikelen", tag:"IT"},
+      {text:"Facturatie- en orderverwerkingssysteem inrichten", tag:"IT"},
+      {text:"Boekhoudpakket koppelen en accountant informeren over nieuwe activiteit", tag:"Financieel"},
+      {text:"Klantendatabase opbouwen: garages, dealers, exporteurs in de regio"},
+      {text:"Inkoopregistratie inrichten: elke partij traceerbaar per leverancier en datum"},
+    ]},
+  { title:"Fase 6 — Verkoop & lancering", numBg:"#C0DD97", numColor:"#27500A", badge:"Go live", badgeBg:"#C0DD97", badgeTxt:"#27500A", bar:"#639922",
+    tasks:[
+      {text:"Prijslijst opstellen per categorie met marges"},
+      {text:"Verkoopkanalen bepalen: afhaal, telefonisch, online bestelportal of webshop"},
+      {text:"Eerste klanten benaderen: garages en dealers in Spijkenisse en omgeving"},
+      {text:"Relatie leggen met garages zonder vaste leverancier"},
+      {text:"Account aanmaken op B2B platforms indien gewenst (eBay Motors Pro e.d.)"},
+      {text:"Opening aankondigen bij relaties en via social media"},
+      {text:"Later: webshop uitbreiden met gereedschap en automaterialen"},
+    ]},
+];
+
+const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+let allTasks = 0;
+
+function updateStats() {
+  const done = Object.values(saved).filter(Boolean).length;
+  document.getElementById('s-total').textContent = allTasks;
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-pct').textContent = allTasks ? Math.round(done/allTasks*100)+'%' : '0%';
+}
+
+function updateBar(pi) {
+  const ph = phases[pi];
+  let done = 0;
+  ph.tasks.forEach((_,ti) => { if(saved[`${pi}-${ti}`]) done++; });
+  const bar = document.getElementById('bar-'+pi);
+  if(bar) bar.style.width = Math.round(done/ph.tasks.length*100)+'%';
+}
+
+const container = document.getElementById('phases');
+phases.forEach((ph, pi) => {
+  allTasks += ph.tasks.length;
+  const el = document.createElement('div');
+  el.className = 'phase';
+  const hdr = document.createElement('div');
+  hdr.className = 'phase-header';
+  hdr.innerHTML = `
+    <div class="phase-num" style="background:${ph.numBg};color:${ph.numColor}">${pi+1}</div>
+    <div style="flex:1">
+      <div class="phase-title">${ph.title}</div>
+      <div class="progress-bar"><div class="progress-fill" id="bar-${pi}" style="background:${ph.bar};width:0%"></div></div>
+    </div>
+    <span class="phase-badge" style="background:${ph.badgeBg};color:${ph.badgeTxt}">${ph.badge}</span>
+    <span class="chevron" id="chev-${pi}">▶</span>`;
+  const body = document.createElement('div');
+  body.className = 'phase-body'+(pi===0?' open':'');
+  if(pi===0) setTimeout(()=>{ const c=document.getElementById('chev-0'); if(c)c.classList.add('open'); },0);
+  ph.tasks.forEach((t,ti) => {
+    const key = `${pi}-${ti}`;
+    const row = document.createElement('div');
+    row.className = 'task';
+    const tagHtml = t.tag ? `<span class="task-tag" style="background:${ph.numBg};color:${ph.numColor}">${t.tag}</span>` : '';
+    row.innerHTML = `<div class="task-check${saved[key]?' done':''}" data-key="${key}"></div><div class="task-text${saved[key]?' done':''}">${t.text}${tagHtml}</div>`;
+    row.querySelector('.task-check').addEventListener('click', function() {
+      const k = this.dataset.key;
+      saved[k] = !saved[k];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      this.classList.toggle('done', saved[k]);
+      this.nextElementSibling.classList.toggle('done', saved[k]);
+      updateStats();
+      updateBar(pi);
+    });
+    body.appendChild(row);
+  });
+  hdr.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    hdr.querySelector('.chevron').classList.toggle('open', open);
+  });
+  el.appendChild(hdr);
+  el.appendChild(body);
+  container.appendChild(el);
+  setTimeout(()=>updateBar(pi), 50);
+});
+updateStats();
+</script>
+</body>
+</html>
